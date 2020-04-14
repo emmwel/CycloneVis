@@ -67,6 +67,7 @@ namespace inviwo {
         vec3 vert2 = basis * vec3(1.0f, 0.0f, 0.0f) + offset;
         vec3 vert3 = basis * vec3(1.0f, 1.0f, 0.0f) + offset;
         
+        // Color and normal of quad
         vec4 color = vec4(1, 1, 1, 1);
         vec3 normal = vec3(0, 0, 1);
         
