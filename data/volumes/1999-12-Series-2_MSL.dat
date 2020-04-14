@@ -1,0 +1,6 @@
+Rawfile: 1999-12-Series-2_MSL.raw
+Resolution: 480 241 120
+Format: FLOAT32
+BasisVector1: 48 0 0
+BasisVector2: 0 24.1 0
+BasisVector3: 0 0 12
