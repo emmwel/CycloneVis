@@ -28,11 +28,13 @@
  *********************************************************************************/
 
 #include <inviwo/cyclonevis/cyclonevismodule.h>
+#include <inviwo/cyclonevis/processors/meshgraph.h>
 #include <inviwo/cyclonevis/processors/volumeslicequad.h>
 
 namespace inviwo {
 
 cyclonevisModule::cyclonevisModule(InviwoApplication* app) : InviwoModule(app, "cyclonevis") {
+    registerProcessor<MeshGraph>();
     // Add a directory to the search path of the Shadermanager
     // ShaderManager::getPtr()->addShaderSearchPath(getPath(ModulePath::GLSL));
 

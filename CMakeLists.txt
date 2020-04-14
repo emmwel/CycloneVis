@@ -7,6 +7,7 @@ ivw_module(cyclonevis)
 set(HEADER_FILES
     include/inviwo/cyclonevis/cyclonevismodule.h
     include/inviwo/cyclonevis/cyclonevismoduledefine.h
+    include/inviwo/cyclonevis/processors/meshgraph.h
     include/inviwo/cyclonevis/processors/volumeslicequad.h
 )
 ivw_group("Header Files" ${HEADER_FILES})
@@ -15,6 +16,7 @@ ivw_group("Header Files" ${HEADER_FILES})
 # Add source files
 set(SOURCE_FILES
     src/cyclonevismodule.cpp
+    src/processors/meshgraph.cpp
     src/processors/volumeslicequad.cpp
 )
 ivw_group("Source Files" ${SOURCE_FILES})
