@@ -33,9 +33,11 @@
 #include <inviwo/core/common/inviwo.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/ordinalproperty.h>
+#include <inviwo/core/properties/boolproperty.h>
 #include <inviwo/core/ports/meshport.h>
 #include <inviwo/core/datastructures/geometry/mesh.h>
 #include <inviwo/core/datastructures/buffer/buffer.h>
+#include <inviwo/cyclonevis/ngraph/ngraph.hpp>
 
 namespace inviwo {
 
@@ -66,7 +68,12 @@ public:
 private:
     MeshInport inport_;
     MeshOutport outport_;
-    FloatVec3Property position_;
+    BoolProperty filterVertices_;
+    BoolProperty filterEdges_;
+    NGraph::tGraph<int, vec3, double> graph_;
+    std::vector<vec3> positions_;
+    void createGraph();
+    bool graphCreated_;
 };
 
 }  // namespace inviwo

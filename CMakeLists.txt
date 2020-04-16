@@ -9,6 +9,8 @@ set(HEADER_FILES
     include/inviwo/cyclonevis/cyclonevismoduledefine.h
     include/inviwo/cyclonevis/processors/meshgraph.h
     include/inviwo/cyclonevis/processors/volumeslicequad.h
+    include/inviwo/cyclonevis/ngraph/ngraph.hpp
+    include/inviwo/cyclonevis/ngraph/set_ops.hpp
 )
 ivw_group("Header Files" ${HEADER_FILES})
 
