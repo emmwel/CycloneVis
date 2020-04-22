@@ -130,7 +130,7 @@ void MeshGraph::createGraph() {
         std::pair<int, int> edge = edges[i];
         
         // Calculate edge length
-        double edge_length = glm::distance(edge.second, edge.first);
+        double edge_length = glm::distance(positions[edge.second], positions[edge.first]);
         
         // Insert edge and set vertex data as vertex position
         // set edge data as edge length
