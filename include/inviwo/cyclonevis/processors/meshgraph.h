@@ -34,6 +34,7 @@
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <inviwo/core/properties/boolproperty.h>
+#include <inviwo/core/properties/minmaxproperty.h>
 #include <inviwo/core/ports/meshport.h>
 #include <inviwo/core/datastructures/geometry/mesh.h>
 #include <inviwo/core/datastructures/buffer/buffer.h>
@@ -64,12 +65,27 @@ public:
 
     virtual const ProcessorInfo getProcessorInfo() const override;
     static const ProcessorInfo processorInfo_;
+    
+    using filterVerticesFunc = bool (*) (const vec3& v);
+    
+    /*
+     FILTER FUNCTIONS
+     */
+    bool filterPos(const vec3& v);
 
 private:
     MeshInport inport_;
     MeshOutport outport_;
+    
+    // properties to choose what to filter
     BoolProperty filterVertices_;
     BoolProperty filterEdges_;
+    
+    FloatMinMaxProperty filterX_;
+    FloatMinMaxProperty filterY_;
+    FloatMinMaxProperty filterZ_;
+
+    // graph data members
     NGraph::tGraph<int, vec3, double> graph_;
     std::vector<vec3> positions_;
     void createGraph();

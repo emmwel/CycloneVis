@@ -45,11 +45,11 @@ namespace inviwo {
 	VolumeSliceQuad::VolumeSliceQuad()
 		: Processor()
 		, outport_("outport")
-		, position_("position", "Position", vec3(0.0f), vec3(-100.0f), vec3(100.0f))
-        , basis_("Basis", "Basis and offset"){
+        , basis_("Basis", "Basis and offset")
+        , sliceNumber_("sliceNumber", "Slice Number", 4, 1, 8){
 
 		addPort(outport_);
-		addProperties(position_, basis_);
+		addProperties(basis_, sliceNumber_);
 	}
 
 	void VolumeSliceQuad::process() {
@@ -62,10 +62,14 @@ namespace inviwo {
         // Create vertices according to basis property
         mat3 basis = mat3{basis_.a_, basis_.b_, basis_.c_};
         vec3 offset = basis_.offset_.get();
-        vec3 vert0 = basis * vec3(0.0f, 0.0f, 0.0f) + offset;
-        vec3 vert1 = basis * vec3(0.0f, 1.0f, 0.0f) + offset;
-        vec3 vert2 = basis * vec3(1.0f, 0.0f, 0.0f) + offset;
-        vec3 vert3 = basis * vec3(1.0f, 1.0f, 0.0f) + offset;
+        
+        // Current z-val should be based on volume and slice
+        float z_val = float(sliceNumber_.get()) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
+        
+        vec3 vert0 = basis * vec3(0.0f, 0.0f, z_val) + offset;
+        vec3 vert1 = basis * vec3(0.0f, 1.0f, z_val) + offset;
+        vec3 vert2 = basis * vec3(1.0f, 0.0f, z_val) + offset;
+        vec3 vert3 = basis * vec3(1.0f, 1.0f, z_val) + offset;
         
         // Color and normal of quad
         vec4 color = vec4(1, 1, 1, 1);

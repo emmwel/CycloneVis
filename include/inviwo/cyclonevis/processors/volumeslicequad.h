@@ -64,8 +64,8 @@ public:
     static const ProcessorInfo processorInfo_;
 private:
     MeshOutport outport_;
-    FloatVec3Property position_;
 	BasisProperty basis_;
+    IntSizeTProperty sliceNumber_;
 };
 
 }  // namespace inviwo

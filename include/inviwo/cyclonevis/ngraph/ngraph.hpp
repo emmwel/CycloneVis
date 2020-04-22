@@ -33,6 +33,7 @@
 #include <string>
 #include <algorithm>
 #include <sstream>      // for I/O << and >> operators
+#include <functional>
 #include "set_ops.hpp"
 
 
@@ -640,16 +641,12 @@ public:
     
     // define a function type which returns a bool and takes
     // vertex_data
-    using condition_function = bool (*) (const vertex_data& vd);
+    // using condition_function = bool (*) (const vertex_data& vd);
+    std::function<bool(const vertex_data&)> search_condition;
     
-    static bool lessThan10(const vertex_data& vd) {
-        return vd < 10;
-    }
     
-    tGraph BFS_vertex(const vertex& start_vertex, condition_function search_condition) {
-        // visited
-        std::vector<bool> visited(num_vertices(), false);
-        //std::cout << visited[1] << std::endl;
+    
+    void BFS_vertex_util(const vertex& start_vertex, std::vector<bool>& visited, vertex_set& search_set) {
         
         // queue used to traverse graph
         std::list<vertex> queue;
@@ -657,16 +654,17 @@ public:
         visited[start_vertex] = true;
         queue.push_back(start_vertex);
         
-        // set used to save vertices which fulfill the search condition
-        vertex_set search_set;
-        
+        // Go through queue until empty
         while(!queue.empty()) {
             vertex cur = queue.front();
             //std::cout << cur << std::endl;
             queue.pop_front();
             
+            //std::cout  << "haha: " << search_condition(VDL_[cur]) << std::endl;
+            
             if (search_condition(VDL_[cur])) {
                 search_set.insert(cur);
+                //std::cout  << "haha: " << search_condition(VDL_[cur]) << std::endl;
             }
             
             for (vertex_iterator p = out_neighbors_begin(cur); p != out_neighbors_end(cur); ++p) {
@@ -675,6 +673,22 @@ public:
                     visited[*p] = true;
                     queue.push_back(*p);
                 }
+            }
+        }
+        
+    }
+    
+    tGraph BFS_vertex() {
+        // visited
+        std::vector<bool> visited(num_vertices(), false);
+        //std::cout << visited[1] << std::endl;
+        
+        // set used to save vertices which fulfill the search condition
+        vertex_set search_set;
+        
+        for (unsigned long i = 0; i < num_vertices(); i++) {
+            if (visited[i] == false) {
+                BFS_vertex_util(i, visited, search_set);
             }
         }
         
