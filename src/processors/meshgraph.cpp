@@ -49,20 +49,26 @@ MeshGraph::MeshGraph()
     , outport_("outport")
     , filterVertices_("filterVertices", "Filter Vertices", false)
     , filterEdges_("filterEdges", "Filter Edges", false)
-    , filterX_("filterX", "Filter X Pos", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
-    , filterY_("filterY", "Filter Y Pos", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
-    , filterZ_("filterZ", "Filter Z Pos", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+    , filterXMin_("filterXMin", "Filter X Min Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+    , filterYMin_("filterYMin", "Filter Y Min Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+    , filterZMin_("filterZMin", "Filter Z Min Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+    , filterXMax_("filterXMax", "Filter X Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+    , filterYMax_("filterYMax", "Filter Y Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+    , filterZMax_("filterZMax", "Filter Z Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
     , filterEdgeLength_("filterEdgeLength", "Filter Edge Length", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
     , graphCreated_(false) {
     
     addPort(inport_);
     addPort(outport_);
-    addProperties(filterVertices_, filterX_, filterY_, filterZ_, filterEdges_, filterEdgeLength_);
+    addProperties(filterVertices_, filterXMin_, filterXMax_, filterYMin_, filterYMax_, filterZMin_, filterZMax_, filterEdges_, filterEdgeLength_);
     
     // Serialize as filtering positions depend on mesh input
-    filterX_.setSerializationMode(PropertySerializationMode::All);
-    filterY_.setSerializationMode(PropertySerializationMode::All);
-    filterZ_.setSerializationMode(PropertySerializationMode::All);
+    filterXMin_.setSerializationMode(PropertySerializationMode::All);
+    filterYMin_.setSerializationMode(PropertySerializationMode::All);
+    filterZMin_.setSerializationMode(PropertySerializationMode::All);
+    filterXMax_.setSerializationMode(PropertySerializationMode::All);
+    filterYMax_.setSerializationMode(PropertySerializationMode::All);
+    filterZMax_.setSerializationMode(PropertySerializationMode::All);
     filterEdgeLength_.setSerializationMode(PropertySerializationMode::All);
         
     inport_.onChange([this]() {
@@ -75,23 +81,40 @@ MeshGraph::MeshGraph()
             NetworkLock lock(this);
             auto minmax = util::bufferMinMax(posbuffer.first);
             
-            // Define ranges
-            vec2 x_range{minmax.first.x, minmax.second.x};
-            vec2 y_range{minmax.first.y, minmax.second.y};
-            vec2 z_range{minmax.first.z, minmax.second.z};
+            // Define first range [min, midpoint]
+            vec2 xRangeMin{minmax.first.x, (minmax.second.x - minmax.first.x)/2.f};
+            vec2 yRangeMin{minmax.first.y, (minmax.second.y - minmax.first.y)/2.f};
+            vec2 zRangeMin{minmax.first.z, (minmax.second.z - minmax.first.z)/2.f};
             
-            filterX_.setRange(x_range);
-            filterY_.setRange(y_range);
-            filterZ_.setRange(z_range);
+            // Define second range [midpoint, max]
+            vec2 xRangeMax{(minmax.second.x - minmax.first.x)/2.f, minmax.second.x};
+            vec2 yRangeMax{(minmax.second.y - minmax.first.y)/2.f, minmax.second.y};
+            vec2 zRangeMax{(minmax.second.z - minmax.first.z)/2.f, minmax.second.z};
             
-            filterX_.setCurrentStateAsDefault();
-            filterY_.setCurrentStateAsDefault();
-            filterZ_.setCurrentStateAsDefault();
+            double increment = 0.1;
+            double minSep = 0.01;
+            
+            filterXMin_.set(xRangeMin, xRangeMin, increment, minSep);
+            filterYMin_.set(yRangeMin, yRangeMin, increment, minSep);
+            filterZMin_.set(zRangeMin, zRangeMin, increment, minSep);
+            filterXMax_.set(xRangeMax, xRangeMax, increment, minSep);
+            filterYMax_.set(yRangeMax, yRangeMax, increment, minSep);
+            filterZMax_.set(zRangeMax, zRangeMax, increment, minSep);
+            
+            filterXMin_.setCurrentStateAsDefault();
+            filterYMin_.setCurrentStateAsDefault();
+            filterZMin_.setCurrentStateAsDefault();
+            filterXMax_.setCurrentStateAsDefault();
+            filterYMax_.setCurrentStateAsDefault();
+            filterZMax_.setCurrentStateAsDefault();
             
         } else {
-            filterX_.resetToDefaultState();
-            filterY_.resetToDefaultState();
-            filterZ_.resetToDefaultState();
+            filterXMin_.resetToDefaultState();
+            filterYMin_.resetToDefaultState();
+            filterZMin_.resetToDefaultState();
+            filterXMax_.resetToDefaultState();
+            filterYMax_.resetToDefaultState();
+            filterZMax_.resetToDefaultState();
             filterEdgeLength_.resetToDefaultState();
         }
     });
@@ -99,12 +122,17 @@ MeshGraph::MeshGraph()
 }
 
 bool MeshGraph::filterPos(const vec3& v) {
-    // Get min and max positions
-    vec3 filterMin(filterX_->x, filterY_->x, filterZ_->x);
-    vec3 filterMax(filterX_->y, filterY_->y, filterZ_->y);
+    // Get min and max position for the first range
+    vec3 filterMinRangeMin(filterXMin_->x, filterYMin_->x, filterZMin_->x);
+    vec3 filterMinRangeMax(filterXMin_->y, filterYMin_->y, filterZMin_->y);
     
-    // Check if the vertex is within the min and max positions
-    if (glm::all(glm::greaterThanEqual(v, filterMin)) && glm::all(glm::lessThanEqual(v, filterMax))) {
+    // Get min and max position for the second range
+    vec3 filterMaxRangeMin(filterXMax_->x, filterYMax_->x, filterZMax_->x);
+    vec3 filterMaxRangeMax(filterXMax_->y, filterYMax_->y, filterZMax_->y);
+    
+    // Check if the vertex is within the first or second range
+    if ( (glm::all(glm::greaterThanEqual(v, filterMinRangeMin)) &&  glm::all(glm::lessThanEqual(v, filterMinRangeMax))) ||
+        (glm::all(glm::greaterThanEqual(v, filterMaxRangeMin)) &&  glm::all(glm::lessThanEqual(v, filterMaxRangeMax)))) {
             return true;
     }
     
@@ -159,7 +187,7 @@ void MeshGraph::createGraph() {
         graph_.insert_edge({edge.first, positions[edge.first]}, {edge.second, positions[edge.second]}, edgeLength);
     }
     
-    filterEdgeLength_.setRange({minLength, maxLength});
+    filterEdgeLength_.set({minLength, maxLength}, {minLength, maxLength}, 0.1, 0.01);
     
     graphCreated_ = true;
 }
@@ -178,7 +206,7 @@ void MeshGraph::process() {
     
     if (!filterVertices_ && !filterEdges_) {
         outport_.setData(inport_.getData()->clone());
-        graph_.print();
+//        graph_.print();
         return;
     }
     
@@ -227,7 +255,7 @@ void MeshGraph::process() {
     result->addBuffer(BufferType::PositionAttrib, posBuff);
     result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuff);
     
-    graphFiltered.print();
+//    graphFiltered.print();
     outport_.setData(result);
     
     

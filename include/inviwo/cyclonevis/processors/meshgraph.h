@@ -82,9 +82,14 @@ private:
     BoolProperty filterVertices_;
     BoolProperty filterEdges_;
     
-    FloatMinMaxProperty filterX_;
-    FloatMinMaxProperty filterY_;
-    FloatMinMaxProperty filterZ_;
+    // Sets two different ranges for position values
+    FloatMinMaxProperty filterXMin_;
+    FloatMinMaxProperty filterYMin_;
+    FloatMinMaxProperty filterZMin_;
+    FloatMinMaxProperty filterXMax_;
+    FloatMinMaxProperty filterYMax_;
+    FloatMinMaxProperty filterZMax_;
+    
     FloatMinMaxProperty filterEdgeLength_;
 
     // graph data members
