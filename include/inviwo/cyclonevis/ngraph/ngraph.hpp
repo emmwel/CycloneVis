@@ -182,7 +182,7 @@ public:
     }
     
     
-    tGraph(): G_(), num_edges_(0), undirected_(false){}
+    tGraph(): G_(), num_edges_(0), undirected_(false), VDL_(), EDL_(){}
     tGraph(std::istream &s): G_(), num_edges_(0), undirected_(false)
     {
         s >> *this;
@@ -192,9 +192,29 @@ public:
     undirected_(B.undirected_), VDL_(B.VDL_), EDL_(B.EDL_){}
     tGraph(const edge_set &E)
     {
+        num_edges_ = 0;
+        undirected_ = false;
         for (typename edge_set::const_iterator p = E.begin();
-             p != E.end(); p++)
+             p != E.end(); p++) {
+//            std::cout << "Edge: [" << p->first << ", " << p->second << "]" << std::endl;
             insert_edge(*p);
+        }
+        
+            
+    }
+    
+    tGraph(const edge_set &E, const vertex_data_list& vdl, const edge_data_list& edl)
+        : G_(), VDL_(), EDL_()
+    {
+        num_edges_ = 0;
+        undirected_ = false;
+        for (typename edge_set::const_iterator p = E.begin();
+             p != E.end(); p++) {
+//            std::cout << "Edge: [" << p->first << ", " << p->second << "]" << std::endl;
+            insert_edge({p->first, vdl.at(p->first)}, {p->second, vdl.at(p->second)}, edl.at(*p));
+        }
+        
+            
     }
     
     bool is_undirected() const
@@ -369,6 +389,7 @@ public:
     
     void insert_edge(const vertex &a, const vertex& b)
     {
+//        std::cout << "hej" << std::endl;
         iterator pa = find(a);
         if (pa == G_.end())
         {
@@ -642,9 +663,7 @@ public:
     // define a function type which returns a bool and takes
     // vertex_data
     // using condition_function = bool (*) (const vertex_data& vd);
-    std::function<bool(const vertex_data&)> search_condition;
-    
-    
+    std::function<bool(const vertex_data&)> search_condition_vertex;
     
     void BFS_vertex_util(const vertex& start_vertex, std::vector<bool>& visited, vertex_set& search_set) {
         
@@ -660,11 +679,11 @@ public:
             //std::cout << cur << std::endl;
             queue.pop_front();
             
-            //std::cout  << "haha: " << search_condition(VDL_[cur]) << std::endl;
+            //std::cout  << "haha: " << search_condition_vertex(VDL_[cur]) << std::endl;
             
-            if (search_condition(VDL_[cur])) {
+            if (search_condition_vertex(VDL_[cur])) {
                 search_set.insert(cur);
-                //std::cout  << "haha: " << search_condition(VDL_[cur]) << std::endl;
+                //std::cout  << "haha: " << search_condition_vertex(VDL_[cur]) << std::endl;
             }
             
             for (vertex_iterator p = out_neighbors_begin(cur); p != out_neighbors_end(cur); ++p) {
@@ -694,6 +713,61 @@ public:
         
         return subgraph(search_set);
     }
+    
+    std::function<bool(const edge_data&)> search_condition_edge;
+     
+     void BFS_edge_util(const vertex& start_vertex, std::vector<bool>& visited, edge_set& search_set) {
+         
+         // queue used to traverse graph
+         std::list<vertex> queue;
+         
+         visited[start_vertex] = true;
+         queue.push_back(start_vertex);
+         
+         // Go through queue until empty
+         while(!queue.empty()) {
+             vertex cur = queue.front();
+//             std::cout << cur << std::endl;
+             queue.pop_front();
+
+             // go through all outgoing edges
+             for (vertex_iterator p = out_neighbors_begin(cur); p != out_neighbors_end(cur); ++p) {
+
+                 edge e{cur, *p};
+//                 std::cout << "Edge: [" << e.first << ", " << e.second << "]" << std::endl;
+                 // if edge fulfills condition, add to set
+                 if (search_condition_edge(EDL_.at(e))) {
+                     search_set.insert(e);
+                 }
+                 
+                 // if reachable vertex has not been visited
+                 if (!visited[*p]) {
+                     visited[*p] = true;
+                     queue.push_back(*p);
+                 }
+             }
+         }
+         
+     }
+    
+    tGraph BFS_edge() {
+        // visited
+        std::vector<bool> visited(num_vertices(), false);
+        //std::cout << visited[1] << std::endl;
+        
+        // set used to save edges which fulfill the search condition
+        edge_set search_set{};
+        
+        for (unsigned long i = 0; i < num_vertices(); i++) {
+            if (visited[i] == false) {
+                BFS_edge_util(i, visited, search_set);
+            }
+        }
+//        std::cout << search_set.size() << std::endl;
+//
+        return tGraph(search_set, VDL_, EDL_);
+    }
+    
     
     /*
      return graph as list of edges in vertex format
@@ -756,14 +830,14 @@ public:
         {
             const vertex &this_node = node(p);
             if (B.includes_vertex(this_node))
-                G.insert_vertex(this_node);
+                G.insert_vertex({this_node, VDL_.at(this_node)});
             {
                 const vertex_set &out = out_neighbors(p);
                 for (typename vertex_set::const_iterator q= out.begin();
                      q != out.end(); q++)
                 {
                     if (B.includes_edge(this_node, *q))
-                        G.insert_edge(this_node, *q);
+                        G.insert_edge({this_node, VDL_.at(this_node)}, {*q, VDL_.at(*q)}, EDL_.at({this_node, *q}));
                 }
             }
         }
@@ -1311,7 +1385,8 @@ void tGraph<T, W, X>::print() const
         
         for (typename vertex_set::const_iterator q=out.begin();
              q!=out.end(); q++)
-            std::cerr << p->first << "  -->  " << *q << "\n";
+            std::cerr << p->first << "  -->  " << *q << "\n"
+            << "Edge data: " <<  EDL_.at({p->first, *q}) << "\n";
     }
     std::cerr << std::endl;
     

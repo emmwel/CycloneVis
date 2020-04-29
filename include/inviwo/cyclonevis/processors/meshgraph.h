@@ -72,6 +72,7 @@ public:
      FILTER FUNCTIONS
      */
     bool filterPos(const vec3& v);
+    bool filterLength(const double& d);
 
 private:
     MeshInport inport_;
@@ -84,6 +85,7 @@ private:
     FloatMinMaxProperty filterX_;
     FloatMinMaxProperty filterY_;
     FloatMinMaxProperty filterZ_;
+    FloatMinMaxProperty filterEdgeLength_;
 
     // graph data members
     NGraph::tGraph<int, vec3, double> graph_;
