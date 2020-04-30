@@ -81,25 +81,27 @@ MeshGraph::MeshGraph()
             NetworkLock lock(this);
             auto minmax = util::bufferMinMax(posbuffer.first);
             
+            // Calculate midpoints
+            double xMidpoint = (minmax.second.x + minmax.first.x)/2.0;
+            double yMidpoint = (minmax.second.y + minmax.first.y)/2.0;
+            double zMidpoint = (minmax.second.z + minmax.first.z)/2.0;
+            
             // Define first range [min, midpoint]
-            vec2 xRangeMin{minmax.first.x, (minmax.second.x - minmax.first.x)/2.f};
-            vec2 yRangeMin{minmax.first.y, (minmax.second.y - minmax.first.y)/2.f};
-            vec2 zRangeMin{minmax.first.z, (minmax.second.z - minmax.first.z)/2.f};
+            vec2 xRangeMin{minmax.first.x, xMidpoint};
+            vec2 yRangeMin{minmax.first.y, yMidpoint};
+            vec2 zRangeMin{minmax.first.z, zMidpoint};
             
             // Define second range [midpoint, max]
-            vec2 xRangeMax{(minmax.second.x - minmax.first.x)/2.f, minmax.second.x};
-            vec2 yRangeMax{(minmax.second.y - minmax.first.y)/2.f, minmax.second.y};
-            vec2 zRangeMax{(minmax.second.z - minmax.first.z)/2.f, minmax.second.z};
+            vec2 xRangeMax{xMidpoint, minmax.second.x};
+            vec2 yRangeMax{yMidpoint, minmax.second.y};
+            vec2 zRangeMax{zMidpoint, minmax.second.z};
             
-            double increment = 0.1;
-            double minSep = 0.01;
-            
-            filterXMin_.set(xRangeMin, xRangeMin, increment, minSep);
-            filterYMin_.set(yRangeMin, yRangeMin, increment, minSep);
-            filterZMin_.set(zRangeMin, zRangeMin, increment, minSep);
-            filterXMax_.set(xRangeMax, xRangeMax, increment, minSep);
-            filterYMax_.set(yRangeMax, yRangeMax, increment, minSep);
-            filterZMax_.set(zRangeMax, zRangeMax, increment, minSep);
+            filterXMin_.set(xRangeMin, xRangeMin, increment_, minSep_);
+            filterYMin_.set(yRangeMin, yRangeMin, increment_, minSep_);
+            filterZMin_.set(zRangeMin, zRangeMin, increment_, minSep_);
+            filterXMax_.set(xRangeMax, xRangeMax, increment_, minSep_);
+            filterYMax_.set(yRangeMax, yRangeMax, increment_, minSep_);
+            filterZMax_.set(zRangeMax, zRangeMax, increment_, minSep_);
             
             filterXMin_.setCurrentStateAsDefault();
             filterYMin_.setCurrentStateAsDefault();
@@ -122,21 +124,34 @@ MeshGraph::MeshGraph()
 }
 
 bool MeshGraph::filterPos(const vec3& v) {
-    // Get min and max position for the first range
-    vec3 filterMinRangeMin(filterXMin_->x, filterYMin_->x, filterZMin_->x);
-    vec3 filterMinRangeMax(filterXMin_->y, filterYMin_->y, filterZMin_->y);
+    // Bools for each dim
+    bool inXRange = false;
+    bool inYRange = false;
+    bool inZRange = false;
     
-    // Get min and max position for the second range
-    vec3 filterMaxRangeMin(filterXMax_->x, filterYMax_->x, filterZMax_->x);
-    vec3 filterMaxRangeMax(filterXMax_->y, filterYMax_->y, filterZMax_->y);
-    
-    // Check if the vertex is within the first or second range
-    if ( (glm::all(glm::greaterThanEqual(v, filterMinRangeMin)) &&  glm::all(glm::lessThanEqual(v, filterMinRangeMax))) ||
-        (glm::all(glm::greaterThanEqual(v, filterMaxRangeMin)) &&  glm::all(glm::lessThanEqual(v, filterMaxRangeMax)))) {
-            return true;
+    // Check if x value is within either range
+    if ((std::isgreaterequal(v.x, filterXMin_->x) && std::islessequal(v.x, filterXMin_->y)) ||
+        (std::isgreaterequal(v.x, filterXMax_->x) && std::islessequal(v.x, filterXMax_->y))) {
+        inXRange = true;
+    }
+    // Check if y value is within either range
+    if ((std::isgreaterequal(v.y, filterYMin_->x) && std::islessequal(v.y, filterYMin_->y)) ||
+        (std::isgreaterequal(v.y, filterYMax_->x) && std::islessequal(v.y, filterYMax_->y))) {
+        inYRange = true;
+    }
+    // Check if z value is within either range
+    if ((std::isgreaterequal(v.z, filterZMin_->x) && std::islessequal(v.z, filterZMin_->y)) ||
+        (std::isgreaterequal(v.z, filterZMax_->x) && std::islessequal(v.z, filterZMax_->y))) {
+        inZRange = true;
     }
     
-    return false;
+    // Return true if all dims are within a range
+    if (inXRange && inYRange && inZRange) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 bool MeshGraph::filterLength(const double &d) {
@@ -144,7 +159,6 @@ bool MeshGraph::filterLength(const double &d) {
 }
 
 void MeshGraph::createGraph() {
-    //NetworkLock lock(this);
     // Get input mesh to get data for the graph
     std::shared_ptr<Mesh> mesh(inport_.getData()->clone());
     
@@ -183,11 +197,11 @@ void MeshGraph::createGraph() {
         maxLength = std::max(edgeLength, maxLength);
         
         // Insert edge and set vertex data as vertex position
-        // set edge data as edge length
+        // and set edge data as edge length
         graph_.insert_edge({edge.first, positions[edge.first]}, {edge.second, positions[edge.second]}, edgeLength);
     }
-    
-    filterEdgeLength_.set({minLength, maxLength}, {minLength, maxLength}, 0.1, 0.01);
+    // Set property for filtering edge length
+    filterEdgeLength_.set({minLength, maxLength}, {minLength, maxLength}, increment_, minSep_);
     
     graphCreated_ = true;
 }
@@ -204,12 +218,13 @@ void MeshGraph::process() {
     // Filtered graph
     NGraph::tGraph<int, vec3, double> graphFiltered;
     
+    // Return unfiltered mesh if no filtering is activated
     if (!filterVertices_ && !filterEdges_) {
         outport_.setData(inport_.getData()->clone());
-//        graph_.print();
         return;
     }
     
+    // Filter both vertices and edges
     if (filterVertices_ && filterEdges_) {
         // Bind filter functions to search condition, then do BFS on graph
         graph_.search_condition_vertex = std::bind(&MeshGraph::filterPos, this, std::placeholders::_1);
@@ -222,20 +237,21 @@ void MeshGraph::process() {
         graphFiltered = graphVertexFiltered.intersect(graphEdgeFiltered);
     
     }
-    
+    // Only filter vertices
     else if (filterVertices_ && !filterEdges_) {
         // Bind filter function, then do BFS
         graph_.search_condition_vertex = std::bind(&MeshGraph::filterPos, this, std::placeholders::_1);
         
         graphFiltered = graph_.BFS_vertex();
     }
+    // Only filter edges
     else if (!filterVertices_ && filterEdges_) {
         // Bind filter function, then do BFS
         graph_.search_condition_edge = std::bind(&MeshGraph::filterLength, this, std::placeholders::_1);
         graphFiltered = graph_.BFS_edge();
     }
     
-    // Create index buffer from new graph
+    // Create index buffer from the filtered graph
     std::vector<std::uint32_t> indexMeshData;
     std::vector<int> newIndices = graphFiltered.get_graph_as_vertex_list();
 
@@ -244,18 +260,16 @@ void MeshGraph::process() {
     }
     auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
 
-    // Create position buffer (vertex data)
+    // Create position buffer by copying and moving old positions
     std::vector<vec3> positions(positions_);
     auto posBuff = util::makeBuffer(std::move(positions));
 
 
     // Create mesh from buffers
-    // NOTE: should be moved when edges can be filtered
     inviwo::Mesh* result = new Mesh(DrawType::Lines, ConnectivityType::None);
     result->addBuffer(BufferType::PositionAttrib, posBuff);
     result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuff);
     
-//    graphFiltered.print();
     outport_.setData(result);
     
     

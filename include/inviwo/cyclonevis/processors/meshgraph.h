@@ -66,8 +66,6 @@ public:
     virtual const ProcessorInfo getProcessorInfo() const override;
     static const ProcessorInfo processorInfo_;
     
-    using filterVerticesFunc = bool (*) (const vec3& v);
-    
     /*
      FILTER FUNCTIONS
      */
@@ -78,7 +76,7 @@ private:
     MeshInport inport_;
     MeshOutport outport_;
     
-    // properties to choose what to filter
+    // Properties to choose what to filter
     BoolProperty filterVertices_;
     BoolProperty filterEdges_;
     
@@ -91,8 +89,11 @@ private:
     FloatMinMaxProperty filterZMax_;
     
     FloatMinMaxProperty filterEdgeLength_;
+    
+    double increment_ = 0.1;
+    double minSep_ = 0.01;
 
-    // graph data members
+    // Graph data members
     NGraph::tGraph<int, vec3, double> graph_;
     std::vector<vec3> positions_;
     void createGraph();
