@@ -11,6 +11,7 @@ set(HEADER_FILES
     include/inviwo/cyclonevis/processors/volumeslicequad.h
     include/inviwo/cyclonevis/ngraph/ngraph.hpp
     include/inviwo/cyclonevis/ngraph/set_ops.hpp
+    include/inviwo/cyclonevis/util/batchvolumesampler.h
 )
 ivw_group("Header Files" ${HEADER_FILES})
 
@@ -20,6 +21,7 @@ set(SOURCE_FILES
     src/cyclonevismodule.cpp
     src/processors/meshgraph.cpp
     src/processors/volumeslicequad.cpp
+    src/util/batchvolumesampler.cp
 )
 ivw_group("Source Files" ${SOURCE_FILES})
 

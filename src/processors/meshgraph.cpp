@@ -159,6 +159,9 @@ bool MeshGraph::filterLength(const double &d) {
 }
 
 void MeshGraph::createGraph() {
+    // Clear graph
+    graph_.clear();
+    
     // Get input mesh to get data for the graph
     std::shared_ptr<Mesh> mesh(inport_.getData()->clone());
     
@@ -202,7 +205,7 @@ void MeshGraph::createGraph() {
     }
     // Set property for filtering edge length
     filterEdgeLength_.set({minLength, maxLength}, {minLength, maxLength}, increment_, minSep_);
-    
+
     graphCreated_ = true;
 }
 
@@ -221,6 +224,7 @@ void MeshGraph::process() {
     // Return unfiltered mesh if no filtering is activated
     if (!filterVertices_ && !filterEdges_) {
         outport_.setData(inport_.getData()->clone());
+
         return;
     }
     
