@@ -45,7 +45,8 @@ const ProcessorInfo MeshGraph::getProcessorInfo() const { return processorInfo_;
 
 MeshGraph::MeshGraph()
     : Processor()
-    , inport_("inport")
+    , meshInport_("meshInport")
+    , volInport_("volumeInport")
     , outport_("outport")
     , filterVertices_("filterVertices", "Filter Vertices", false)
     , filterEdges_("filterEdges", "Filter Edges", false)
@@ -58,7 +59,8 @@ MeshGraph::MeshGraph()
     , filterEdgeLength_("filterEdgeLength", "Filter Edge Length", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
     , graphCreated_(false) {
     
-    addPort(inport_);
+    addPort(meshInport_);
+    addPort(volInport_);
     addPort(outport_);
     addProperties(filterVertices_, filterXMin_, filterXMax_, filterYMin_, filterYMax_, filterZMin_, filterZMax_, filterEdges_, filterEdgeLength_);
     
@@ -71,56 +73,65 @@ MeshGraph::MeshGraph()
     filterZMax_.setSerializationMode(PropertySerializationMode::All);
     filterEdgeLength_.setSerializationMode(PropertySerializationMode::All);
         
-    inport_.onChange([this]() {
-        graphCreated_ = false;
-        filterVertices_ = false;
-        filterEdges_ = false;
-        const auto mesh = inport_.getData();
-        auto posbuffer = mesh->findBuffer(BufferType::PositionAttrib);
-        if (posbuffer.first) {
-            NetworkLock lock(this);
-            auto minmax = util::bufferMinMax(posbuffer.first);
-            
-            // Calculate midpoints
-            double xMidpoint = (minmax.second.x + minmax.first.x)/2.0;
-            double yMidpoint = (minmax.second.y + minmax.first.y)/2.0;
-            double zMidpoint = (minmax.second.z + minmax.first.z)/2.0;
-            
-            // Define first range [min, midpoint]
-            vec2 xRangeMin{minmax.first.x, xMidpoint};
-            vec2 yRangeMin{minmax.first.y, yMidpoint};
-            vec2 zRangeMin{minmax.first.z, zMidpoint};
-            
-            // Define second range [midpoint, max]
-            vec2 xRangeMax{xMidpoint, minmax.second.x};
-            vec2 yRangeMax{yMidpoint, minmax.second.y};
-            vec2 zRangeMax{zMidpoint, minmax.second.z};
-            
-            filterXMin_.set(xRangeMin, xRangeMin, increment_, minSep_);
-            filterYMin_.set(yRangeMin, yRangeMin, increment_, minSep_);
-            filterZMin_.set(zRangeMin, zRangeMin, increment_, minSep_);
-            filterXMax_.set(xRangeMax, xRangeMax, increment_, minSep_);
-            filterYMax_.set(yRangeMax, yRangeMax, increment_, minSep_);
-            filterZMax_.set(zRangeMax, zRangeMax, increment_, minSep_);
-            
-            filterXMin_.setCurrentStateAsDefault();
-            filterYMin_.setCurrentStateAsDefault();
-            filterZMin_.setCurrentStateAsDefault();
-            filterXMax_.setCurrentStateAsDefault();
-            filterYMax_.setCurrentStateAsDefault();
-            filterZMax_.setCurrentStateAsDefault();
-            
-        } else {
-            filterXMin_.resetToDefaultState();
-            filterYMin_.resetToDefaultState();
-            filterZMin_.resetToDefaultState();
-            filterXMax_.resetToDefaultState();
-            filterYMax_.resetToDefaultState();
-            filterZMax_.resetToDefaultState();
-            filterEdgeLength_.resetToDefaultState();
-        }
+    meshInport_.onChange([this]() {
+        meshInportOnChange();
     });
         
+    volInport_.onChange([this]() {
+        volume_ = volInport_.getData();
+        //auto gah = volInport_.get
+    });
+        
+}
+
+void MeshGraph::meshInportOnChange() {
+    graphCreated_ = false;
+    filterVertices_ = false;
+    filterEdges_ = false;
+    const auto mesh = meshInport_.getData();
+    auto posbuffer = mesh->findBuffer(BufferType::PositionAttrib);
+    if (posbuffer.first) {
+        NetworkLock lock(this);
+        auto minmax = util::bufferMinMax(posbuffer.first);
+        
+        // Calculate midpoints
+        double xMidpoint = (minmax.second.x + minmax.first.x)/2.0;
+        double yMidpoint = (minmax.second.y + minmax.first.y)/2.0;
+        double zMidpoint = (minmax.second.z + minmax.first.z)/2.0;
+        
+        // Define first range [min, midpoint]
+        vec2 xRangeMin{minmax.first.x, xMidpoint};
+        vec2 yRangeMin{minmax.first.y, yMidpoint};
+        vec2 zRangeMin{minmax.first.z, zMidpoint};
+        
+        // Define second range [midpoint, max]
+        vec2 xRangeMax{xMidpoint, minmax.second.x};
+        vec2 yRangeMax{yMidpoint, minmax.second.y};
+        vec2 zRangeMax{zMidpoint, minmax.second.z};
+        
+        filterXMin_.set(xRangeMin, xRangeMin, increment_, minSep_);
+        filterYMin_.set(yRangeMin, yRangeMin, increment_, minSep_);
+        filterZMin_.set(zRangeMin, zRangeMin, increment_, minSep_);
+        filterXMax_.set(xRangeMax, xRangeMax, increment_, minSep_);
+        filterYMax_.set(yRangeMax, yRangeMax, increment_, minSep_);
+        filterZMax_.set(zRangeMax, zRangeMax, increment_, minSep_);
+        
+        filterXMin_.setCurrentStateAsDefault();
+        filterYMin_.setCurrentStateAsDefault();
+        filterZMin_.setCurrentStateAsDefault();
+        filterXMax_.setCurrentStateAsDefault();
+        filterYMax_.setCurrentStateAsDefault();
+        filterZMax_.setCurrentStateAsDefault();
+        
+    } else {
+        filterXMin_.resetToDefaultState();
+        filterYMin_.resetToDefaultState();
+        filterZMin_.resetToDefaultState();
+        filterXMax_.resetToDefaultState();
+        filterYMax_.resetToDefaultState();
+        filterZMax_.resetToDefaultState();
+        filterEdgeLength_.resetToDefaultState();
+    }
 }
 
 bool MeshGraph::filterPos(const vec3& v) {
@@ -163,7 +174,7 @@ void MeshGraph::createGraph() {
     graph_.clear();
     
     // Get input mesh to get data for the graph
-    std::shared_ptr<Mesh> mesh(inport_.getData()->clone());
+    std::shared_ptr<Mesh> mesh(meshInport_.getData()->clone());
     
     // Buffers, only works when there is one position buffer and one color buffer
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
@@ -209,9 +220,21 @@ void MeshGraph::createGraph() {
     graphCreated_ = true;
 }
 
+template <typename T>
+std::vector<T> convertBuffer(std::shared_ptr<BufferBase> buffer) {
+    auto bufferRAM = buffer->getRepresentation<BufferRAM>();
+    return bufferRAM->dispatch<std::vector<T>>([](auto buf) {
+        auto data = buf->getDataContainer();
+        std::vector<T> result(data.size());
+        std::transform(data.begin(), data.end(), result.begin(),
+                       [](auto& elem) { return util::glm_convert<T>(elem); });
+        return result;
+    });
+}
+
 void MeshGraph::process() {
     // If there is no input yet
-    if (!inport_.isReady())
+    if (!meshInport_.isReady())
         return;
     
     // Create graph if not created
@@ -223,7 +246,7 @@ void MeshGraph::process() {
     
     // Return unfiltered mesh if no filtering is activated
     if (!filterVertices_ && !filterEdges_) {
-        outport_.setData(inport_.getData()->clone());
+        outport_.setData(meshInport_.getData()->clone());
 
         return;
     }
@@ -261,7 +284,10 @@ void MeshGraph::process() {
 
     for (auto& ni : newIndices) {
         indexMeshData.push_back(static_cast<std::uint32_t>(ni));
+        std::cout << ni << std::endl;
     }
+    std::cout << "end" << std::endl;
+    graphFiltered.print();
     auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
 
     // Create position buffer by copying and moving old positions
@@ -273,6 +299,95 @@ void MeshGraph::process() {
     inviwo::Mesh* result = new Mesh(DrawType::Lines, ConnectivityType::None);
     result->addBuffer(BufferType::PositionAttrib, posBuff);
     result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuff);
+    
+    
+    
+//    // sample volume using world position
+//    auto posWorld = convertBuffer<dvec3>(posBuff);
+//
+//    auto volumeSampler  = util::makeBatchVolumeSampler<3, SampleBehaviour::Trilinear, BoundaryBehaviour::Repeat, BoundaryBehaviour::Repeat,                                        BoundaryBehaviour::Repeat>(volume_);
+//
+//    std::vector<dvec3> output{posWorld.size()};
+//    volumeSampler->sample(posWorld, output);
+//
+//    // Save values into color buffer, where x are original values and y are normalized
+//
+//    double minVal = std::numeric_limits<double>::max();
+//    double maxVal = std::numeric_limits<double>::min();
+//
+//    for (unsigned long i = 0; i < output.size(); i++) {
+//        minVal = std::min(output[i].x, minVal);
+//        maxVal = std::max(output[i].x, maxVal);
+//    }
+//
+//    // create color vector
+//    std::vector<vec4> colors(output.size());
+//
+//    for (unsigned long i = 0; i < colors.size(); i++) {
+//        // Get as color in [0, 255]
+//        output[i].y = 255 * (output[i].x - minVal) / (maxVal - minVal);
+//        colors[i] = vec4(output[i], 1.0);
+//        //std::cout << colors[i] << std::endl;
+//    }
+//
+//    auto colorBuffer = util::makeBuffer(std::move(colors));
+//    result->addBuffer(BufferType::ColorAttrib, colorBuffer);
+    
+//    dvec3 dims = volume_->getDimensions();
+//    ivec3 dimsi = volume_->getDimensions();
+//    dvec3 tja = posWorld[0];
+//    ivec3 voxelPosi = glm::floor(tja * dims);
+//    std::cout << "he: " << voxelPosi << std::endl;
+//
+//    auto modInt = [](int a, int b) {
+//        int result = a % b;
+//        //int result = a - b * (a / b);
+//        // take care of negative values
+//        //return result + (result < 0 ? b : 0);
+//        return result + ((result >> 31) & b);
+//    };
+//
+//    for (int i = 0; i < 3; i++) {
+//        voxelPosi[i] = modInt(voxelPosi[i], dimsi[i]);
+//    }
+//
+//    std::cout << "he2: " << voxelPosi << std::endl;
+
+    
+//    std::cout << "origin: " << origin << std::endl;
+//    std::cout << "extent: " << extent << std::endl;
+    
+//    for(auto& pw : posWorld) {
+//        std::cout << pw << std::endl;
+//    }
+//    std::cout << "end worldpos" << std::endl;
+//
+//    for(auto& sp : samplePos) {
+//        std::cout << sp << std::endl;
+//    }
+//
+//    std::cout << "end samplepos" << std::endl;
+//
+//    for (auto& o : output) {
+//        std::cout << o << std::endl;
+//    }
+//    std::cout << "end" << std::endl;
+    
+//    std::cout << volume_->getWorldMatrix() << std::endl;
+//    std::cout << volume_->getModelMatrix() << std::endl;
+//    Matrix<4, double> hm(volume_->getModelMatrix());
+//    Matrix<4, double> hmInv = MatrixInvert<4, double>(hm);
+//    Matrix<4, double> hehe = hmInv * 10.0;
+//    std::cout << hmInv << std::endl;
+//    std::cout << hehe << std::endl;
+//
+//
+//    vec4 gah(15.9, 7.95, 6.0, 1.0);
+//    std::cout << gah << std::endl;
+//    std::cout << hmInv * gah << std::endl;
+//    std::cout << hm * gah << std::endl;
+//    std::cout << hehe * gah << std::endl;
+    
     
     outport_.setData(result);
     

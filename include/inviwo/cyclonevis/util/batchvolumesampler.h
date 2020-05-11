@@ -102,7 +102,7 @@ struct Sample<DataDims, T, SampleBehaviour::Trilinear, BX, BY, BZ> {
                 const auto pOffset(voxelPosi + offset);
                 ivec3 indexPos;
                 for (size_t j = 0; j < 3; ++j) {
-                    if (boundarymix[i]) {
+                    if (boundarymix[j]) {
                         indexPos[j] = glm::clamp(pOffset[j], 0, dimsi[j] - 1);
                     } else {
                         indexPos[j] = modInt(pOffset[j], dimsi[j]);
@@ -158,7 +158,7 @@ class TemplateBatchVolumeSampler : public BatchVolumeSampler<DataDims> {
 public:
     TemplateBatchVolumeSampler(std::shared_ptr<const Volume> volume,
                                const VolumeRAMPrecision<T>* vrprecision)
-        : BatchVolumeSampler(), volume_(volume), vrprecision_(vrprecision) {}
+        : BatchVolumeSampler<DataDims>(), volume_(volume), vrprecision_(vrprecision) {}
 
     virtual ~TemplateBatchVolumeSampler() = default;
 

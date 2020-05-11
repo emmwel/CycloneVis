@@ -33,19 +33,14 @@
 #include <inviwo/core/common/inviwo.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/ordinalproperty.h>
-#include <inviwo/core/properties/boolproperty.h>
-#include <inviwo/core/properties/minmaxproperty.h>
 #include <inviwo/core/ports/meshport.h>
 #include <inviwo/core/ports/volumeport.h>
-#include <inviwo/core/datastructures/geometry/mesh.h>
-#include <inviwo/core/datastructures/buffer/buffer.h>
-#include <inviwo/cyclonevis/ngraph/ngraph.hpp>
-#include <inviwo/cyclonevis/util/batchvolumesampler.h>
+#include <inviwo/core/util/indexmapper.h>
 
 namespace inviwo {
 
-/** \docpage{org.inviwo.MeshGraph, Mesh Graph}
- * ![](org.inviwo.MeshGraph.png?classIdentifier=org.inviwo.MeshGraph)
+/** \docpage{org.inviwo.FloodFillVolume, Flood Fill Volume}
+ * ![](org.inviwo.FloodFillVolume.png?classIdentifier=org.inviwo.FloodFillVolume)
  * Explanation of how to use the processor.
  *
  * ### Inports
@@ -58,55 +53,24 @@ namespace inviwo {
  *   * __<Prop1>__ <description>.
  *   * __<Prop2>__ <description>
  */
-class IVW_MODULE_CYCLONEVIS_API MeshGraph : public Processor {
+class IVW_MODULE_CYCLONEVIS_API FloodFillVolume : public Processor {
 public:
-    MeshGraph();
-    virtual ~MeshGraph() = default;
+    FloodFillVolume();
+    virtual ~FloodFillVolume() = default;
+    
+    void floodFill(ivec3 index, double offset, ivec3 dims);
 
     virtual void process() override;
 
     virtual const ProcessorInfo getProcessorInfo() const override;
     static const ProcessorInfo processorInfo_;
-    
-    /*
-     FILTER FUNCTIONS
-     */
-    bool filterPos(const vec3& v);
-    bool filterLength(const double& d);
 
 private:
     MeshInport meshInport_;
-    VolumeInport volInport_;
-    MeshOutport outport_;
-    
-    // Functions which handle inport data changes
-    void meshInportOnChange();
-    
-    // Properties to choose what to filter
-    BoolProperty filterVertices_;
-    BoolProperty filterEdges_;
-    
-    // Sets two different ranges for position values
-    FloatMinMaxProperty filterXMin_;
-    FloatMinMaxProperty filterYMin_;
-    FloatMinMaxProperty filterZMin_;
-    FloatMinMaxProperty filterXMax_;
-    FloatMinMaxProperty filterYMax_;
-    FloatMinMaxProperty filterZMax_;
-    
-    FloatMinMaxProperty filterEdgeLength_;
-    
-    double increment_ = 0.1;
-    double minSep_ = 0.01;
-
-    // Graph data members
-    NGraph::tGraph<int, vec3, double> graph_;
-    std::vector<vec3> positions_;
-    void createGraph();
-    bool graphCreated_;
-    
-    // Sample volume data members
-    std::shared_ptr<const Volume> volume_;
+    VolumeInport volumeInport_;
+    VolumeOutport volumeOutport_;
+    Volume* inVolume_;
+    std::shared_ptr<Volume> outVolume_;
 };
 
 }  // namespace inviwo
