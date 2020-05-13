@@ -58,7 +58,8 @@ public:
     FloodFillVolume();
     virtual ~FloodFillVolume() = default;
     
-    void floodFill(ivec3 index, double offset, ivec3 dims);
+    size3_t getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims);
+    void floodFill(ivec3 index, double boundary, ivec3 dims);
 
     virtual void process() override;
 
@@ -71,6 +72,7 @@ private:
     VolumeOutport volumeOutport_;
     Volume* inVolume_;
     std::shared_ptr<Volume> outVolume_;
+    ivec3 voxelSearchSpaceExtent_ = ivec3(10);
 };
 
 }  // namespace inviwo

@@ -54,20 +54,24 @@ FloodFillVolume::FloodFillVolume()
 
 }
 
-size3_t getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims) {
-    ivec3 voxelPos = ivec3(glm::floor(position * dims));
+size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims) {
+    
+    // go from world to model coordinates
+    dvec3 modelCoords = dvec3(glm::inverse(inVolume_->getModelMatrix())* dvec4(position, 1));
+    
+    // From BatchVolumeSampler.h //
+    ivec3 voxelPos = ivec3(glm::floor(modelCoords * dims));
     ivec3 dimsi = ivec3(dims);
     
+    // Function which takes modulus within bounds
     auto modInt = [](int a, int b) {
         int result = a % b;
-        //int result = a - b * (a / b);
-        // take care of negative values
-        //return result + (result < 0 ? b : 0);
         return result + ((result >> 31) & b);
     };
     
     size3_t indexPos;
     
+    // Make sure index is within dimensions using modInt
     for (int i = 0; i < 3; i++) {
         indexPos[i] = modInt(voxelPos[i], dimsi[i]);
     }
@@ -75,83 +79,71 @@ size3_t getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims) {
     return indexPos;
 }
 
-void FloodFillVolume::floodFill(ivec3 index, double offset, ivec3 dims) {
+void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
     
-    std::vector<bool> visited(dims[0] * dims[1] * dims[2], false);
+    // std::vector<bool> visited(dims[0] * dims[1] * dims[2], false);
     
-    std::list<ivec3> queue;
+    // Get acces to data
     auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
+    auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
     
+    // Create queue
+    std::list<ivec3> queue;
     queue.push_back(index);
     
+    // Get isoValue
     double isoValue = inVolumeDataAccesser->getAsDouble(index);
-    std::cout << isoValue << std::endl;
+    outVolumeDataAccesser->setFromDouble(index, 0.0);
+    
+    // Get offset used to get indices of nearby voxels
+    const std::array<ivec3, 8> offsets = {{{-1, 0, 0},
+                                           {1, 0, 0},
+                                           {0, -1, 0},
+                                           {0, 1, 0},
+                                           {-1, -1, 0},
+                                           {1, -1, 0},
+                                           {1, 1, 0},
+                                           {-1, 1, 0}}};
+    
+    // Dimension check
+    ivec3 vsse = voxelSearchSpaceExtent_;
+    auto withinSearchSpace = [vsse, index] (ivec3 i) {
+        ivec3 lowerBound{index - vsse};
+        ivec3 upperBound{index + vsse};
+        return glm::all(glm::greaterThan(i, lowerBound)) && glm::all(glm::lessThan(i, upperBound));
+    };
     
     while(!queue.empty()) {
         ivec3 curIndex = queue.front();
-        double voxelVal = 0;
-        int indexInt = 0;
         queue.pop_front();
-        
-        // Check nearby voxels in X-dim
-        ivec3 indexMinusXDim = {curIndex - ivec3(1, 0, 0)};
-        indexInt = indexMinusXDim[0] + (dims[0] * indexMinusXDim[1]) + (dims[0] * dims[1] * indexMinusXDim[2]);
-        voxelVal = inVolumeDataAccesser->getAsDouble(indexMinusXDim);
-        
-        if (!visited[indexInt] && indexMinusXDim[0] > -1 && (voxelVal - isoValue) < offset ) {
-            visited[indexInt] = true;
-            std::cout << voxelVal << std::endl;
-            std::cout << indexMinusXDim << std::endl;
-        }
-        
-        ivec3 indexAddXDim = {curIndex + ivec3(1, 0, 0)};
-        voxelVal = inVolumeDataAccesser->getAsDouble(indexAddXDim);
-        
-        if (indexAddXDim[0] < (dims[0] - 1) && (voxelVal - isoValue) < offset ) {
-            std::cout << voxelVal << std::endl;
-            std::cout << indexAddXDim << std::endl;
+//        std::cout << "current: " << curIndex << std::endl;
+        for (unsigned long i = 0; i < offsets.size(); i++) {
+            ivec3 neighborIndex{curIndex + offsets[i]};
+//            std::cout << neighborIndex << std::endl;
+            // Check that neighbor voxel is within dimensions
+            if (withinSearchSpace(neighborIndex)) {
+                double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
+                double compValue = neighborVal - isoValue;
+                
+                // Check value is within boundary
+                if ( compValue < boundary && compValue > 0.0) {
+                    
+                    // Only add to queue and change value if voxel has not been accessed before
+                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
+
+                        // Set voxel value of output index as diff with iso value
+                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+//                        std::cout << outVolumeDataAccesser->getAsDouble(neighborIndex) << std::endl;
+                        // Add to queue
+                        queue.push_back(neighborIndex);
+                    }
+                }
+            }
+            
         }
 
-        ivec3 indexMinusYDim = {curIndex - ivec3(0, 1, 0)};
-        voxelVal = inVolumeDataAccesser->getAsDouble(indexMinusYDim);
-        
-        if (indexMinusYDim[1] > -1 && (voxelVal - isoValue) < offset) {
-            std::cout << voxelVal << std::endl;
-            std::cout << indexMinusYDim << std::endl;
-        }
-        
-        ivec3 indexAddYDim = {curIndex + ivec3(0, 1, 0)};
-        voxelVal = inVolumeDataAccesser->getAsDouble(indexAddYDim);
-        
-        if (indexAddYDim[1] < (dims[1] - 1) && (voxelVal - isoValue) < offset ) {
-            std::cout << voxelVal << std::endl;
-            std::cout << indexAddYDim << std::endl;
-        }
-
-        ivec3 indexMinusZDim = {curIndex - ivec3(0, 0, 1)};
-        voxelVal = inVolumeDataAccesser->getAsDouble(indexMinusZDim);
-        
-        if (indexMinusZDim[2] > -1 && (voxelVal - isoValue) < offset ) {
-            std::cout << voxelVal << std::endl;
-            std::cout << indexMinusZDim << std::endl;
-        }
-        
-        ivec3 indexAddZDim = {curIndex + ivec3(0, 0, 1)};
-        voxelVal = inVolumeDataAccesser->getAsDouble(indexAddZDim);
-        
-        if (indexAddZDim[2] < (dims[2] - 1) && (voxelVal - isoValue) < offset ) {
-            std::cout << voxelVal << std::endl;
-            std::cout << indexAddZDim << std::endl;
-        }
-//
-//        std::cout << indexMinusXDim << std::endl;
-//        std::cout << indexAddXDim << std::endl;
-//        std::cout << indexMinusYDim << std::endl;
-//        std::cout << indexAddYDim << std::endl;
-//        std::cout << indexMinusZDim << std::endl;
-//        std::cout << indexAddZDim << std::endl;
-        break;
     }
+//    std::cout << "adios" << std::endl;
 }
 
 void FloodFillVolume::process() {
@@ -164,10 +156,23 @@ void FloodFillVolume::process() {
     size3_t dims = inVolume_->getDimensions();
     
     // Create output volume and set size to inport volume
-    outVolume_ = std::make_shared<Volume>(Volume(dims));
+    outVolume_ = std::make_shared<Volume>(Volume(dims, inVolume_->getDataFormat()));
     outVolume_->setBasis(inVolume_->getBasis());
     outVolume_->setOffset(inVolume_->getOffset());
     
+    // Set all output voxel values to max possible number
+    auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
+    double maxDouble = std::numeric_limits<double>::max();
+    
+    // Loop through all voxels and set to max value
+    for (unsigned long i = 0; i < dims.x; i++) {
+        for (unsigned long j = 0; j < dims.y; j++) {
+            for (unsigned long k = 0; k < dims.z; k++) {
+                outVolumeDataAccesser->setFromDouble(size3_t(i, j, k), maxDouble);
+            }
+        }
+    }
+
     // Get inport mesh positions
     std::shared_ptr<Mesh> mesh(meshInport_.getData()->clone());
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
@@ -176,12 +181,10 @@ void FloodFillVolume::process() {
 //    for(auto& p : positions)
 //        std::cout << getVoxelIndexFromPosition(p, dims) << std::endl;
     
-    floodFill(getVoxelIndexFromPosition(positions[0], dims), 1000, dims);
+    for(auto& pos : positions) {
+        floodFill(getVoxelIndexFromPosition(pos, dims), 500.0, dims);
+    }
     
-    // Get volume data
-//    const util::IndexMapper<3, int> im(dims);
-//    auto vrprecision = inVolume_->getRepresentation<VolumeRAM>()->getAsDouble(size3_t(0, 0, 0));
-//    std::cout << vrprecision << std::endl;
     volumeOutport_.setData(outVolume_);
 }
 

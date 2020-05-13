@@ -284,10 +284,9 @@ void MeshGraph::process() {
 
     for (auto& ni : newIndices) {
         indexMeshData.push_back(static_cast<std::uint32_t>(ni));
-        std::cout << ni << std::endl;
     }
-    std::cout << "end" << std::endl;
-    graphFiltered.print();
+
+
     auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
 
     // Create position buffer by copying and moving old positions
@@ -299,16 +298,27 @@ void MeshGraph::process() {
     inviwo::Mesh* result = new Mesh(DrawType::Lines, ConnectivityType::None);
     result->addBuffer(BufferType::PositionAttrib, posBuff);
     result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuff);
+
     
-    
-    
-//    // sample volume using world position
-//    auto posWorld = convertBuffer<dvec3>(posBuff);
+    // sample volume using world position
+    auto posWorld = convertBuffer<dvec3>(posBuff);
+    std::vector<dvec3> samplePos{posWorld.size()};
+
+    // Get world to model matrix
+    Matrix<4, double> worldToModelMatrix = MatrixInvert<4, double>(volume_->getModelMatrix());
+
+    for (unsigned long i = 0; i < samplePos.size(); i++) {
+        dvec4 modelCoords = worldToModelMatrix * dvec4(posWorld[i], 1);
+        samplePos[i] = dvec3(modelCoords);
+    }
+
+    auto volumeSampler  = util::makeBatchVolumeSampler<3, SampleBehaviour::Trilinear, BoundaryBehaviour::Repeat, BoundaryBehaviour::Repeat,                                        BoundaryBehaviour::Repeat>(volume_);
+
+    std::vector<dvec3> output{samplePos.size()};
+    volumeSampler->sample(samplePos, output);
 //
-//    auto volumeSampler  = util::makeBatchVolumeSampler<3, SampleBehaviour::Trilinear, BoundaryBehaviour::Repeat, BoundaryBehaviour::Repeat,                                        BoundaryBehaviour::Repeat>(volume_);
-//
-//    std::vector<dvec3> output{posWorld.size()};
-//    volumeSampler->sample(posWorld, output);
+//    for (auto& o : output)
+//        std::cout << o << std::endl;
 //
 //    // Save values into color buffer, where x are original values and y are normalized
 //
@@ -332,62 +342,6 @@ void MeshGraph::process() {
 //
 //    auto colorBuffer = util::makeBuffer(std::move(colors));
 //    result->addBuffer(BufferType::ColorAttrib, colorBuffer);
-    
-//    dvec3 dims = volume_->getDimensions();
-//    ivec3 dimsi = volume_->getDimensions();
-//    dvec3 tja = posWorld[0];
-//    ivec3 voxelPosi = glm::floor(tja * dims);
-//    std::cout << "he: " << voxelPosi << std::endl;
-//
-//    auto modInt = [](int a, int b) {
-//        int result = a % b;
-//        //int result = a - b * (a / b);
-//        // take care of negative values
-//        //return result + (result < 0 ? b : 0);
-//        return result + ((result >> 31) & b);
-//    };
-//
-//    for (int i = 0; i < 3; i++) {
-//        voxelPosi[i] = modInt(voxelPosi[i], dimsi[i]);
-//    }
-//
-//    std::cout << "he2: " << voxelPosi << std::endl;
-
-    
-//    std::cout << "origin: " << origin << std::endl;
-//    std::cout << "extent: " << extent << std::endl;
-    
-//    for(auto& pw : posWorld) {
-//        std::cout << pw << std::endl;
-//    }
-//    std::cout << "end worldpos" << std::endl;
-//
-//    for(auto& sp : samplePos) {
-//        std::cout << sp << std::endl;
-//    }
-//
-//    std::cout << "end samplepos" << std::endl;
-//
-//    for (auto& o : output) {
-//        std::cout << o << std::endl;
-//    }
-//    std::cout << "end" << std::endl;
-    
-//    std::cout << volume_->getWorldMatrix() << std::endl;
-//    std::cout << volume_->getModelMatrix() << std::endl;
-//    Matrix<4, double> hm(volume_->getModelMatrix());
-//    Matrix<4, double> hmInv = MatrixInvert<4, double>(hm);
-//    Matrix<4, double> hehe = hmInv * 10.0;
-//    std::cout << hmInv << std::endl;
-//    std::cout << hehe << std::endl;
-//
-//
-//    vec4 gah(15.9, 7.95, 6.0, 1.0);
-//    std::cout << gah << std::endl;
-//    std::cout << hmInv * gah << std::endl;
-//    std::cout << hm * gah << std::endl;
-//    std::cout << hehe * gah << std::endl;
-    
     
     outport_.setData(result);
     
