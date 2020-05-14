@@ -36,6 +36,7 @@
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <inviwo/core/ports/meshport.h>
 #include <modules/base/properties/basisproperty.h>
+#include <inviwo/core/properties/boolproperty.h>
 
 
 namespace inviwo {
@@ -64,8 +65,9 @@ public:
     static const ProcessorInfo processorInfo_;
 private:
     MeshOutport outport_;
-	BasisProperty basis_;
     IntSizeTProperty sliceNumber_;
+    BoolProperty mapZToSlice_;
+	BasisProperty basis_;
 };
 
 }  // namespace inviwo

@@ -45,11 +45,12 @@ namespace inviwo {
 	VolumeSliceQuad::VolumeSliceQuad()
 		: Processor()
 		, outport_("outport")
-        , basis_("Basis", "Basis and offset")
-        , sliceNumber_("sliceNumber", "Slice Number", 4, 1, 8){
+        , sliceNumber_("sliceNumber", "Slice Number", 4, 1, 8)
+        , mapZToSlice_("mapZToSlice", "Map Z to slice", true)
+        , basis_("Basis", "Basis and offset") {
 
 		addPort(outport_);
-		addProperties(basis_, sliceNumber_);
+		addProperties(sliceNumber_, mapZToSlice_, basis_);
 	}
 
 	void VolumeSliceQuad::process() {
@@ -63,8 +64,11 @@ namespace inviwo {
         mat3 basis = mat3{basis_.a_, basis_.b_, basis_.c_};
         vec3 offset = basis_.offset_.get();
         
-        // Current z-val should be based on volume and slice
-        float z_val = float(sliceNumber_.get() - 1) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
+        // Define z-val and check if z-val should be based on slice or not
+        float z_val = 0.f;
+        if (mapZToSlice_.get()) {
+            z_val = float(sliceNumber_.get() - 1) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
+        }
         
         vec3 vert0 = basis * vec3(0.0f, 0.0f, z_val) + offset;
         vec3 vert1 = basis * vec3(0.0f, 1.0f, z_val) + offset;
