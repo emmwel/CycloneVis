@@ -64,7 +64,7 @@ namespace inviwo {
         vec3 offset = basis_.offset_.get();
         
         // Current z-val should be based on volume and slice
-        float z_val = float(sliceNumber_.get()) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
+        float z_val = float(sliceNumber_.get() - 1) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
         
         vec3 vert0 = basis * vec3(0.0f, 0.0f, z_val) + offset;
         vec3 vert1 = basis * vec3(0.0f, 1.0f, z_val) + offset;

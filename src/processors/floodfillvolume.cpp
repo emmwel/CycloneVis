@@ -46,11 +46,45 @@ FloodFillVolume::FloodFillVolume()
     , meshInport_("meshInport")
     , volumeInport_("volumeInport")
     , volumeOutport_("volumeOutport")
+    , boundary_("boundary", "Boundary", 0.5f, 0.0f, 1.0f, 0.01f)
+    , searchSpaceExtent_("searchSpaceExtent", "Search Space", {5, 5, 5}, {1, 1, 1}, {100, 100, 100}, {1, 1, 1})
     {
 
     addPort(meshInport_);
     addPort(volumeInport_);
     addPort(volumeOutport_);
+        
+    addProperties(boundary_, searchSpaceExtent_);
+        
+    // Create offset indices used for floodfill
+    offsets_ = {{
+        {-1, 0, 0}, // x
+        {1, 0, 0},
+        {0, -1, 0}, // y
+        {0, 1, 0},
+        {0, 0, -1}, // z
+        {0, 0, 1},
+        {-1, -1, 0}, // middle corners
+        {1, -1, 0},
+        {1, 1, 0},
+        {-1, 1, 0},
+        {-1, 0, -1}, // lower midpoints
+        {1, 0, -1},
+        {0, -1, -1},
+        {0, 1, -1},
+        {-1, 0, 1}, // upper midpoints
+        {1, 0, 1},
+        {0, -1, 1},
+        {0, 1, 1},
+        {-1, -1, -1}, // lower corners
+        {1, -1, -1},
+        {1, 1, -1},
+        {-1, 1, -1},
+        {-1, -1, 1}, // upper corners
+        {1, -1, 1},
+        {1, 1, 1},
+        {-1, 1, 1}
+    }};
 
 }
 
@@ -95,21 +129,11 @@ void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
     double isoValue = inVolumeDataAccesser->getAsDouble(index);
     outVolumeDataAccesser->setFromDouble(index, 0.0);
     
-    // Get offset used to get indices of nearby voxels
-    const std::array<ivec3, 8> offsets = {{{-1, 0, 0},
-                                           {1, 0, 0},
-                                           {0, -1, 0},
-                                           {0, 1, 0},
-                                           {-1, -1, 0},
-                                           {1, -1, 0},
-                                           {1, 1, 0},
-                                           {-1, 1, 0}}};
-    
     // Dimension check
-    ivec3 vsse = voxelSearchSpaceExtent_;
-    auto withinSearchSpace = [vsse, index] (ivec3 i) {
-        ivec3 lowerBound{index - vsse};
-        ivec3 upperBound{index + vsse};
+    ivec3 lowerBound = glm::clamp(index - searchSpaceExtent_.get(), ivec3(0), dims);
+    ivec3 upperBound = glm::clamp(index + searchSpaceExtent_.get(), ivec3(0), dims);
+    
+    auto withinSearchSpace = [lowerBound, upperBound] (ivec3 i) {
         return glm::all(glm::greaterThan(i, lowerBound)) && glm::all(glm::lessThan(i, upperBound));
     };
     
@@ -117,20 +141,21 @@ void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
         ivec3 curIndex = queue.front();
         queue.pop_front();
 //        std::cout << "current: " << curIndex << std::endl;
-        for (unsigned long i = 0; i < offsets.size(); i++) {
-            ivec3 neighborIndex{curIndex + offsets[i]};
+        for (unsigned long i = 0; i < offsets_.size(); i++) {
+            ivec3 neighborIndex{curIndex + offsets_[i]};
 //            std::cout << neighborIndex << std::endl;
             // Check that neighbor voxel is within dimensions
             if (withinSearchSpace(neighborIndex)) {
+                //outVolumeDataAccesser->setFromDouble(neighborIndex, 100);
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
                 double compValue = neighborVal - isoValue;
-                
+//                std::cout << "diff: " << compValue << std::endl;
                 // Check value is within boundary
                 if ( compValue < boundary && compValue > 0.0) {
-                    
+
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
-
+//                        std::cout << "index added to queue: " << neighborIndex << std::endl;
                         // Set voxel value of output index as diff with iso value
                         outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
 //                        std::cout << outVolumeDataAccesser->getAsDouble(neighborIndex) << std::endl;
@@ -143,7 +168,6 @@ void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
         }
 
     }
-//    std::cout << "adios" << std::endl;
 }
 
 void FloodFillVolume::process() {
@@ -178,12 +202,11 @@ void FloodFillVolume::process() {
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
     auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
     
-//    for(auto& p : positions)
-//        std::cout << getVoxelIndexFromPosition(p, dims) << std::endl;
-    
     for(auto& pos : positions) {
-        floodFill(getVoxelIndexFromPosition(pos, dims), 500.0, dims);
+        floodFill(getVoxelIndexFromPosition(pos, dims), boundary_.get(), dims);
     }
+    
+//    floodFill(getVoxelIndexFromPosition(positions[0], dims), boundary_.get(), dims);
     
     volumeOutport_.setData(outVolume_);
 }

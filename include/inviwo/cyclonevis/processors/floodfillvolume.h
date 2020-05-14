@@ -72,7 +72,9 @@ private:
     VolumeOutport volumeOutport_;
     Volume* inVolume_;
     std::shared_ptr<Volume> outVolume_;
-    ivec3 voxelSearchSpaceExtent_ = ivec3(10);
+    FloatProperty boundary_;
+    IntVec3Property searchSpaceExtent_;
+    std::array<ivec3, 26> offsets_;
 };
 
 }  // namespace inviwo
