@@ -47,14 +47,14 @@ FloodFillVolume::FloodFillVolume()
     , volumeInport_("volumeInport")
     , volumeOutport_("volumeOutport")
     , boundary_("boundary", "Boundary", 0.5f, 0.0f, 1.0f, 0.01f)
-    , searchSpaceExtent_("searchSpaceExtent", "Search Space", {5, 5, 5}, {1, 1, 1}, {100, 100, 100}, {1, 1, 1})
+//    , searchSpaceExtent_("searchSpaceExtent", "Search Space", {5, 5, 5}, {1, 1, 1}, {100, 100, 100}, {1, 1, 1})
     {
 
     addPort(meshInport_);
     addPort(volumeInport_);
     addPort(volumeOutport_);
         
-    addProperties(boundary_, searchSpaceExtent_);
+    addProperties(boundary_);
         
     // Create offset indices used for floodfill
     offsets_ = {{
@@ -114,9 +114,6 @@ size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position, const 
 }
 
 void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
-    
-    // std::vector<bool> visited(dims[0] * dims[1] * dims[2], false);
-    
     // Get acces to data
     auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
@@ -130,11 +127,8 @@ void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
     outVolumeDataAccesser->setFromDouble(index, 0.0);
     
     // Dimension check
-    ivec3 lowerBound = glm::clamp(index - searchSpaceExtent_.get(), ivec3(0), dims);
-    ivec3 upperBound = glm::clamp(index + searchSpaceExtent_.get(), ivec3(0), dims);
-    
-    auto withinSearchSpace = [lowerBound, upperBound] (ivec3 i) {
-        return glm::all(glm::greaterThan(i, lowerBound)) && glm::all(glm::lessThan(i, upperBound));
+    auto withinDimension = [dims] (ivec3 i) {
+        return glm::all(glm::greaterThan(i, ivec3(0))) && glm::all(glm::lessThan(i, dims));
     };
     
     while(!queue.empty()) {
@@ -145,7 +139,7 @@ void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
             ivec3 neighborIndex{curIndex + offsets_[i]};
 //            std::cout << neighborIndex << std::endl;
             // Check that neighbor voxel is within dimensions
-            if (withinSearchSpace(neighborIndex)) {
+            if (withinDimension(neighborIndex)) {
                 //outVolumeDataAccesser->setFromDouble(neighborIndex, 100);
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
                 double compValue = neighborVal - isoValue;

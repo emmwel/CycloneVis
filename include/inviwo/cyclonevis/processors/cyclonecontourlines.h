@@ -33,7 +33,11 @@
 #include <inviwo/core/common/inviwo.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/ordinalproperty.h>
+#include <inviwo/core/ports/meshport.h>
+#include <inviwo/core/ports/volumeport.h>
 #include <inviwo/core/ports/imageport.h>
+#include <modules/base/datastructures/imagereusecache.h>
+#include <modules/base/algorithm/image/imagecontour.h>
 
 namespace inviwo {
 
@@ -62,8 +66,15 @@ public:
     static const ProcessorInfo processorInfo_;
 
 private:
-    ImageOutport outport_;
-    FloatVec3Property position_;
+    MeshInport meshInport_;
+    VolumeInport volumeInport_;
+    MeshOutport meshOutport_;
+    Volume* inVolume_;
+    
+    // For slicing volume
+    ImageReuseCache imageCache_;
+    
+    ivec3 getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims);
 };
 
 }  // namespace inviwo

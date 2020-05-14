@@ -73,7 +73,7 @@ private:
     Volume* inVolume_;
     std::shared_ptr<Volume> outVolume_;
     FloatProperty boundary_;
-    IntVec3Property searchSpaceExtent_;
+//    IntVec3Property searchSpaceExtent_;
     std::array<ivec3, 26> offsets_;
 };
 
