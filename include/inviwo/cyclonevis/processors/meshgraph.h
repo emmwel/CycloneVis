@@ -40,7 +40,6 @@
 #include <inviwo/core/datastructures/geometry/mesh.h>
 #include <inviwo/core/datastructures/buffer/buffer.h>
 #include <inviwo/cyclonevis/ngraph/ngraph.hpp>
-#include <inviwo/cyclonevis/util/batchvolumesampler.h>
 
 namespace inviwo {
 

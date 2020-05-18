@@ -68,7 +68,7 @@ struct Sample<DataDims, T, SampleBehaviour::Trilinear, BX, BY, BZ> {
 
         const dvec3 ddims{dims};
         const ivec3 dimsi{dims};
-        const dvec3 ddimsInv{1.0 / ddims};
+        // const dvec3 ddimsInv{1.0 / ddims};
         const bvec3 boundarymix{BX == BoundaryBehaviour::Clamp, BY == BoundaryBehaviour::Clamp,
                                 BZ == BoundaryBehaviour::Clamp};
 
