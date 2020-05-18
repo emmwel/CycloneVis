@@ -278,71 +278,34 @@ void MeshGraph::process() {
         graphFiltered = graph_.BFS_edge();
     }
     
-    // Create index buffer from the filtered graph
-    std::vector<std::uint32_t> indexMeshData;
-    std::vector<int> newIndices = graphFiltered.get_graph_as_vertex_list();
+    // Get indices from the filtered graph
+    std::vector<int> graphIndices = graphFiltered.get_graph_as_vertex_list();
 
-    for (auto& ni : newIndices) {
-        indexMeshData.push_back(static_cast<std::uint32_t>(ni));
+    // Create mapping of indices and vector of positions not filtered away
+    std::set<int> uniqueIndices(graphIndices.begin(), graphIndices.end());
+    std::map<int, int> rangedIndices;
+    std::vector<vec3> filterPositions;
+    int counter = 0;
+    for (std::set<int>::iterator i = uniqueIndices.begin(); i != uniqueIndices.end(); i++) {
+        rangedIndices[*i] = counter;
+        filterPositions.push_back(positions_[*i]);
+        ++counter;
     }
-
-
+    
+    // Map all graph indices to the new mapping
+    std::vector<std::uint32_t> indexMeshData;
+    for (unsigned long i = 0; i < graphIndices.size(); i++) {
+        indexMeshData.push_back(static_cast<std::uint32_t>(rangedIndices[graphIndices[i]]));
+    }
+    
     auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
-
-    // Create position buffer by copying and moving old positions
-    std::vector<vec3> positions(positions_);
-    auto posBuff = util::makeBuffer(std::move(positions));
-
+    auto posBuff = util::makeBuffer(std::move(filterPositions));
 
     // Create mesh from buffers
     inviwo::Mesh* result = new Mesh(DrawType::Lines, ConnectivityType::None);
     result->addBuffer(BufferType::PositionAttrib, posBuff);
     result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuff);
 
-    
-    // sample volume using world position
-    auto posWorld = convertBuffer<dvec3>(posBuff);
-    std::vector<dvec3> samplePos{posWorld.size()};
-
-    // Get world to model matrix
-    Matrix<4, double> worldToModelMatrix = MatrixInvert<4, double>(volume_->getModelMatrix());
-
-    for (unsigned long i = 0; i < samplePos.size(); i++) {
-        dvec4 modelCoords = worldToModelMatrix * dvec4(posWorld[i], 1);
-        samplePos[i] = dvec3(modelCoords);
-    }
-
-    auto volumeSampler  = util::makeBatchVolumeSampler<3, SampleBehaviour::Trilinear, BoundaryBehaviour::Repeat, BoundaryBehaviour::Repeat,                                        BoundaryBehaviour::Repeat>(volume_);
-
-    std::vector<dvec3> output{samplePos.size()};
-    volumeSampler->sample(samplePos, output);
-//
-//    for (auto& o : output)
-//        std::cout << o << std::endl;
-//
-//    // Save values into color buffer, where x are original values and y are normalized
-//
-//    double minVal = std::numeric_limits<double>::max();
-//    double maxVal = std::numeric_limits<double>::min();
-//
-//    for (unsigned long i = 0; i < output.size(); i++) {
-//        minVal = std::min(output[i].x, minVal);
-//        maxVal = std::max(output[i].x, maxVal);
-//    }
-//
-//    // create color vector
-//    std::vector<vec4> colors(output.size());
-//
-//    for (unsigned long i = 0; i < colors.size(); i++) {
-//        // Get as color in [0, 255]
-//        output[i].y = 255 * (output[i].x - minVal) / (maxVal - minVal);
-//        colors[i] = vec4(output[i], 1.0);
-//        //std::cout << colors[i] << std::endl;
-//    }
-//
-//    auto colorBuffer = util::makeBuffer(std::move(colors));
-//    result->addBuffer(BufferType::ColorAttrib, colorBuffer);
-    
     outport_.setData(result);
     
     
