@@ -59,7 +59,13 @@ public:
     virtual ~FloodFillVolume() = default;
     
     size3_t getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims);
-    void floodFill(ivec3 index, double boundary, ivec3 dims);
+    
+    bool withinDimensions(ivec3 i, ivec3 dims);
+    
+    std::pair<double, double> standardDeviationAroundSeed(ivec3 seedVoxel, ivec3 dims);
+    
+    void floodFill(ivec3 seedVoxel, double boundary, ivec3 dims);
+    
 
     virtual void process() override;
 
@@ -69,6 +75,7 @@ public:
 private:
     MeshInport meshInport_;
     VolumeInport volumeInport_;
+    VolumeInport gradientMagnitudeVolInport_;
     VolumeOutport volumeOutport_;
     Volume* inVolume_;
     std::shared_ptr<Volume> outVolume_;

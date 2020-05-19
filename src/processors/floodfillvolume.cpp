@@ -45,6 +45,7 @@ FloodFillVolume::FloodFillVolume()
     : Processor()
     , meshInport_("meshInport")
     , volumeInport_("volumeInport")
+    , gradientMagnitudeVolInport_("gradientMagnitudeVolInport_")
     , volumeOutport_("volumeOutport")
     , boundary_("boundary", "Boundary", 0.5f, 0.0f, 1.0f, 0.01f)
 //    , searchSpaceExtent_("searchSpaceExtent", "Search Space", {5, 5, 5}, {1, 1, 1}, {100, 100, 100}, {1, 1, 1})
@@ -52,6 +53,7 @@ FloodFillVolume::FloodFillVolume()
 
     addPort(meshInport_);
     addPort(volumeInport_);
+    addPort(gradientMagnitudeVolInport_);
     addPort(volumeOutport_);
         
     addProperties(boundary_);
@@ -113,50 +115,107 @@ size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position, const 
     return indexPos;
 }
 
-void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
+bool FloodFillVolume::withinDimensions(ivec3 i, ivec3 dims) {
+    return glm::all(glm::greaterThan(i, ivec3(0))) && glm::all(glm::lessThan(i, dims));
+}
+
+std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 seedVoxel, ivec3 dims) {
+    // Get all neighbor values
+    std::vector<double> neighborsValues;
+    std::vector<double> neighborsGradientMagnitude;
+    auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
+    auto gradientVolumeDataAccesser = gradientMagnitudeVolInport_.getData()->getRepresentation<VolumeRAM>();
+    
+    for (unsigned long i = 0; i < offsets_.size(); i++) {
+        ivec3 neighborVoxel{seedVoxel + offsets_[i]};
+        
+        if (withinDimensions(neighborVoxel, dims)) {
+            neighborsValues.push_back(inVolumeDataAccesser->getAsDouble(neighborVoxel));
+            neighborsGradientMagnitude.push_back(gradientVolumeDataAccesser->getAsDouble(neighborVoxel));
+        }
+    }
+    
+    // Calculate mean
+    double meanValue = std::accumulate(neighborsValues.begin(), neighborsValues.end(), 0.0) / neighborsValues.size();
+    double meanGradMag = std::accumulate(neighborsGradientMagnitude.begin(), neighborsGradientMagnitude.end(), 0.0) / neighborsGradientMagnitude.size();
+    
+    // Calculate difference
+    std::vector<double> diffValue(neighborsValues.size());
+    std::vector<double> diffGradMag(neighborsGradientMagnitude.size());
+    
+    std::transform(neighborsValues.begin(), neighborsValues.end(), diffValue.begin(), [meanValue](double x){ return x - meanValue;});
+    std::transform(neighborsGradientMagnitude.begin(), neighborsGradientMagnitude.end(), diffGradMag.begin(), [meanGradMag](double x){ return x - meanGradMag;});
+    
+    // Sum differences, divide by the size and take square root to get the standard deviation
+    double sqSumValues = std::inner_product(diffValue.begin(), diffValue.end(), diffValue.begin(), 0.0);
+    double sqSumGradMag = std::inner_product(diffGradMag.begin(), diffGradMag.end(), diffGradMag.begin(), 0.0);
+    
+    double stdevValues = std::sqrt(sqSumValues / neighborsValues.size());
+    double stdevGradMag = std::sqrt(sqSumGradMag / neighborsGradientMagnitude.size());
+    
+    return {stdevValues, stdevGradMag};
+}
+
+void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary, ivec3 dims) {
     // Get acces to data
     auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
     
     // Create queue
     std::list<ivec3> queue;
-    queue.push_back(index);
+    queue.push_back(seedVoxel);
     
     // Get isoValue
-    double isoValue = inVolumeDataAccesser->getAsDouble(index);
-    outVolumeDataAccesser->setFromDouble(index, 0.0);
+    double isoValue = inVolumeDataAccesser->getAsDouble(seedVoxel);
+    outVolumeDataAccesser->setFromDouble(seedVoxel, 0.0);
     
-    // Dimension check
-    auto withinDimension = [dims] (ivec3 i) {
-        return glm::all(glm::greaterThan(i, ivec3(0))) && glm::all(glm::lessThan(i, dims));
-    };
+    // Get standard deviation based on seed voxel neighbors
+    std::pair<double, double> stdev = standardDeviationAroundSeed(seedVoxel, dims);
+    double k = 1.0;
     
     while(!queue.empty()) {
         ivec3 curIndex = queue.front();
         queue.pop_front();
-//        std::cout << "current: " << curIndex << std::endl;
+
         for (unsigned long i = 0; i < offsets_.size(); i++) {
             ivec3 neighborIndex{curIndex + offsets_[i]};
-//            std::cout << neighborIndex << std::endl;
+            
             // Check that neighbor voxel is within dimensions
-            if (withinDimension(neighborIndex)) {
-                //outVolumeDataAccesser->setFromDouble(neighborIndex, 100);
+            if (withinDimensions(neighborIndex, dims)) {
+//                std::cout << neighborIndex << std::endl;
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
                 double compValue = neighborVal - isoValue;
-//                std::cout << "diff: " << compValue << std::endl;
-                // Check value is within boundary
-                if ( compValue < boundary && compValue > 0.0) {
-
+                compValue = (std::abs(neighborVal - isoValue) / (k * stdev.first));
+//                std::cout << (std::abs(neighborVal - isoValue) / (k * stdev)) << std::endl;
+                if ( compValue < 1) {
                     // Only add to queue and change value if voxel has not been accessed before
-                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
-//                        std::cout << "index added to queue: " << neighborIndex << std::endl;
+//                    std::cout << "val out vol: " << outVolumeDataAccesser->getAsDouble(neighborIndex) << std::endl;
+                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
+//                        std::cout << "setting" << std::endl;
                         // Set voxel value of output index as diff with iso value
                         outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
-//                        std::cout << outVolumeDataAccesser->getAsDouble(neighborIndex) << std::endl;
+
                         // Add to queue
                         queue.push_back(neighborIndex);
                     }
                 }
+//                std::cout << "end line" << std::endl;
+                
+                // OLD
+
+                // Check value is within boundary
+//                if ( compValue < boundary && compValue > 0.0) {
+//
+//                    // Only add to queue and change value if voxel has not been accessed before
+//                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
+//                        //std::cout << "index added to queue: " << neighborIndex << std::endl;
+//                        // Set voxel value of output index as diff with iso value
+//                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+//                        //std::cout << outVolumeDataAccesser->getAsDouble(neighborIndex) << std::endl;
+//                        // Add to queue
+//                        queue.push_back(neighborIndex);
+//                    }
+//                }
             }
             
         }
@@ -166,7 +225,7 @@ void FloodFillVolume::floodFill(ivec3 index, double boundary, ivec3 dims) {
 
 void FloodFillVolume::process() {
     
-    if (!meshInport_.isReady() || !volumeInport_.isReady())
+    if (!meshInport_.isReady() || !volumeInport_.isReady() || !gradientMagnitudeVolInport_.isReady())
         return;
     
     // Get inport volume size
@@ -199,8 +258,6 @@ void FloodFillVolume::process() {
     for(auto& pos : positions) {
         floodFill(getVoxelIndexFromPosition(pos, dims), boundary_.get(), dims);
     }
-    
-//    floodFill(getVoxelIndexFromPosition(positions[0], dims), boundary_.get(), dims);
     
     volumeOutport_.setData(outVolume_);
 }
