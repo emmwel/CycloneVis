@@ -48,7 +48,6 @@ FloodFillVolume::FloodFillVolume()
     , gradientMagnitudeVolInport_("gradientMagnitudeVolInport_")
     , volumeOutport_("volumeOutport")
     , boundary_("boundary", "Boundary", 0.5f, 0.0f, 1.0f, 0.01f)
-//    , searchSpaceExtent_("searchSpaceExtent", "Search Space", {5, 5, 5}, {1, 1, 1}, {100, 100, 100}, {1, 1, 1})
     {
 
     addPort(meshInport_);
@@ -87,17 +86,18 @@ FloodFillVolume::FloodFillVolume()
         {1, 1, 1},
         {-1, 1, 1}
     }};
+    
+    dims_ = ivec3(0, 0, 0);
 
 }
 
-size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims) {
+size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position) {
     
     // go from world to model coordinates
     dvec3 modelCoords = dvec3(glm::inverse(inVolume_->getModelMatrix())* dvec4(position, 1));
     
     // From BatchVolumeSampler.h //
-    ivec3 voxelPos = ivec3(glm::floor(modelCoords * dims));
-    ivec3 dimsi = ivec3(dims);
+    ivec3 voxelPos = ivec3(glm::floor(modelCoords * dvec3(dims_)));
     
     // Function which takes modulus within bounds
     auto modInt = [](int a, int b) {
@@ -109,17 +109,17 @@ size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position, const 
     
     // Make sure index is within dimensions using modInt
     for (int i = 0; i < 3; i++) {
-        indexPos[i] = modInt(voxelPos[i], dimsi[i]);
+        indexPos[i] = modInt(voxelPos[i], dims_[i]);
     }
     
     return indexPos;
 }
 
-bool FloodFillVolume::withinDimensions(ivec3 i, ivec3 dims) {
-    return glm::all(glm::greaterThan(i, ivec3(0))) && glm::all(glm::lessThan(i, dims));
+bool FloodFillVolume::withinDimensions(ivec3 i) {
+    return glm::all(glm::greaterThan(i, ivec3(0))) && glm::all(glm::lessThan(i, dims_));
 }
 
-std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 seedVoxel, ivec3 dims) {
+std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 seedVoxel) {
     // Get all neighbor values
     std::vector<double> neighborsValues;
     std::vector<double> neighborsGradientMagnitude;
@@ -129,7 +129,7 @@ std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 see
     for (unsigned long i = 0; i < offsets_.size(); i++) {
         ivec3 neighborVoxel{seedVoxel + offsets_[i]};
         
-        if (withinDimensions(neighborVoxel, dims)) {
+        if (withinDimensions(neighborVoxel)) {
             neighborsValues.push_back(inVolumeDataAccesser->getAsDouble(neighborVoxel));
             neighborsGradientMagnitude.push_back(gradientVolumeDataAccesser->getAsDouble(neighborVoxel));
         }
@@ -156,7 +156,7 @@ std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 see
     return {stdevValues, stdevGradMag};
 }
 
-void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary, ivec3 dims) {
+void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary) {
     // Get acces to data
     auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
@@ -170,7 +170,7 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary, ivec3 dims) {
     outVolumeDataAccesser->setFromDouble(seedVoxel, 0.0);
     
     // Get standard deviation based on seed voxel neighbors
-    std::pair<double, double> stdev = standardDeviationAroundSeed(seedVoxel, dims);
+    std::pair<double, double> stdev = standardDeviationAroundSeed(seedVoxel);
     double k = 1.0;
     
     while(!queue.empty()) {
@@ -181,7 +181,7 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary, ivec3 dims) {
             ivec3 neighborIndex{curIndex + offsets_[i]};
             
             // Check that neighbor voxel is within dimensions
-            if (withinDimensions(neighborIndex, dims)) {
+            if (withinDimensions(neighborIndex)) {
 //                std::cout << neighborIndex << std::endl;
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
                 double compValue = neighborVal - isoValue;
@@ -230,10 +230,10 @@ void FloodFillVolume::process() {
     
     // Get inport volume size
     inVolume_ = volumeInport_.getData()->clone();
-    size3_t dims = inVolume_->getDimensions();
+    dims_ = ivec3(inVolume_->getDimensions());
     
     // Create output volume and set size to inport volume
-    outVolume_ = std::make_shared<Volume>(Volume(dims, inVolume_->getDataFormat()));
+    outVolume_ = std::make_shared<Volume>(Volume(dims_, inVolume_->getDataFormat()));
     outVolume_->setBasis(inVolume_->getBasis());
     outVolume_->setOffset(inVolume_->getOffset());
     
@@ -242,9 +242,9 @@ void FloodFillVolume::process() {
     double maxDouble = std::numeric_limits<double>::max();
     
     // Loop through all voxels and set to max value
-    for (unsigned long i = 0; i < dims.x; i++) {
-        for (unsigned long j = 0; j < dims.y; j++) {
-            for (unsigned long k = 0; k < dims.z; k++) {
+    for (int i = 0; i < dims_.x; i++) {
+        for (int j = 0; j < dims_.y; j++) {
+            for (int k = 0; k < dims_.z; k++) {
                 outVolumeDataAccesser->setFromDouble(size3_t(i, j, k), maxDouble);
             }
         }
@@ -256,7 +256,7 @@ void FloodFillVolume::process() {
     auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
     
     for(auto& pos : positions) {
-        floodFill(getVoxelIndexFromPosition(pos, dims), boundary_.get(), dims);
+        floodFill(getVoxelIndexFromPosition(pos), boundary_.get());
     }
     
     volumeOutport_.setData(outVolume_);

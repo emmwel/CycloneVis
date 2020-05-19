@@ -58,13 +58,13 @@ public:
     FloodFillVolume();
     virtual ~FloodFillVolume() = default;
     
-    size3_t getVoxelIndexFromPosition(const dvec3& position, const dvec3& dims);
+    size3_t getVoxelIndexFromPosition(const dvec3& position);
     
-    bool withinDimensions(ivec3 i, ivec3 dims);
+    bool withinDimensions(ivec3 i);
     
-    std::pair<double, double> standardDeviationAroundSeed(ivec3 seedVoxel, ivec3 dims);
+    std::pair<double, double> standardDeviationAroundSeed(ivec3 seedVoxel);
     
-    void floodFill(ivec3 seedVoxel, double boundary, ivec3 dims);
+    void floodFill(ivec3 seedVoxel, double boundary);
     
 
     virtual void process() override;
@@ -82,6 +82,7 @@ private:
     FloatProperty boundary_;
 //    IntVec3Property searchSpaceExtent_;
     std::array<ivec3, 26> offsets_;
+    ivec3 dims_;
 };
 
 }  // namespace inviwo
