@@ -55,6 +55,12 @@ namespace inviwo {
  */
 class IVW_MODULE_CYCLONEVIS_API FloodFillVolume : public Processor {
 public:
+    enum class Method {
+        FloodFill,
+        RegionGrowingValuesBased,
+        RegionGrowingBoundaryBased,
+    };
+    
     FloodFillVolume();
     virtual ~FloodFillVolume() = default;
     
@@ -64,7 +70,9 @@ public:
     
     std::pair<double, double> standardDeviationAroundSeed(ivec3 seedVoxel);
     
-    void floodFill(ivec3 seedVoxel, double boundary);
+    void floodFill(ivec3 seedVoxel);
+    void regionGrowingValuesBased(ivec3 seedVoxel);
+    void regionGrowingBoundaryBased(ivec3 seedVoxel);
     
 
     virtual void process() override;
@@ -79,10 +87,14 @@ private:
     VolumeOutport volumeOutport_;
     Volume* inVolume_;
     std::shared_ptr<Volume> outVolume_;
-    FloatProperty boundary_;
-//    IntVec3Property searchSpaceExtent_;
+
     std::array<ivec3, 26> offsets_;
     ivec3 dims_;
+    
+    // Methods
+    TemplateOptionProperty<Method> method_;
+    FloatProperty boundary_;
+    FloatProperty k_;
 };
 
 }  // namespace inviwo

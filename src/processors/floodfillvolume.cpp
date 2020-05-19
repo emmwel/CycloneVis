@@ -47,7 +47,14 @@ FloodFillVolume::FloodFillVolume()
     , volumeInport_("volumeInport")
     , gradientMagnitudeVolInport_("gradientMagnitudeVolInport_")
     , volumeOutport_("volumeOutport")
-    , boundary_("boundary", "Boundary", 0.5f, 0.0f, 1.0f, 0.01f)
+    , method_("method", "Method",
+              {
+                {"floodfill", "Flood Fill", Method::FloodFill},
+                {"RegionGrowingValuesBased", "Region Growing Values Based", Method::RegionGrowingValuesBased},
+                {"RegionGrowingBoundaryBased", "Region Growing Boundary Based", Method::RegionGrowingBoundaryBased}
+              }, 0)
+    , boundary_("boundary", "Boundary", 250.0f, 0.0f, 5000.0f, 0.01f)
+    , k_("k_", "Weighting coefficient k", 1.0f, 0.0f, 100.0f, 0.01f)
     {
 
     addPort(meshInport_);
@@ -55,7 +62,30 @@ FloodFillVolume::FloodFillVolume()
     addPort(gradientMagnitudeVolInport_);
     addPort(volumeOutport_);
         
-    addProperties(boundary_);
+    addProperties(method_, boundary_, k_);
+        boundary_.setVisible(true);
+        
+    method_.onChange([this](){
+        switch (method_) {
+            case Method::FloodFill:
+                boundary_.setVisible(true);
+                k_.setVisible(false);
+                break;
+                
+            case Method::RegionGrowingValuesBased:
+                boundary_.setVisible(false);
+                k_.setVisible(true);
+                break;
+                
+            case Method::RegionGrowingBoundaryBased:
+                boundary_.setVisible(false);
+                k_.setVisible(true);
+                break;
+                
+            default:
+                break;
+        }
+    });
         
     // Create offset indices used for floodfill
     offsets_ = {{
@@ -156,7 +186,52 @@ std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 see
     return {stdevValues, stdevGradMag};
 }
 
-void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary) {
+void FloodFillVolume::floodFill(ivec3 seedVoxel) {
+    // Get acces to data
+    auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
+    auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
+    
+    // Create queue
+    std::list<ivec3> queue;
+    queue.push_back(seedVoxel);
+    
+    // Get isoValue
+    double isoValue = inVolumeDataAccesser->getAsDouble(seedVoxel);
+    outVolumeDataAccesser->setFromDouble(seedVoxel, 0.0);
+    
+    // Get user-input boundary
+    double boundary = boundary_.get();
+    
+    while(!queue.empty()) {
+        ivec3 curIndex = queue.front();
+        queue.pop_front();
+
+        for (unsigned long i = 0; i < offsets_.size(); i++) {
+            ivec3 neighborIndex{curIndex + offsets_[i]};
+            
+            // Check that neighbor voxel is within dimensions
+            if (withinDimensions(neighborIndex)) {
+                double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
+                double compValue = neighborVal - isoValue;
+
+                // Check value is within boundary
+                if ( compValue < boundary && compValue > 0.0) {
+
+                    // Only add to queue and change value if voxel has not been accessed before
+                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
+                        // Set voxel value of output index as diff with iso value
+                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+
+                        // Add to queue
+                        queue.push_back(neighborIndex);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
     // Get acces to data
     auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
@@ -170,8 +245,8 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary) {
     outVolumeDataAccesser->setFromDouble(seedVoxel, 0.0);
     
     // Get standard deviation based on seed voxel neighbors
-    std::pair<double, double> stdev = standardDeviationAroundSeed(seedVoxel);
-    double k = 1.0;
+    std::pair<double, double> stdevAll = standardDeviationAroundSeed(seedVoxel);
+    double stdevValue = stdevAll.first;
     
     while(!queue.empty()) {
         ivec3 curIndex = queue.front();
@@ -182,16 +257,14 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary) {
             
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
-//                std::cout << neighborIndex << std::endl;
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
                 double compValue = neighborVal - isoValue;
-                compValue = (std::abs(neighborVal - isoValue) / (k * stdev.first));
-//                std::cout << (std::abs(neighborVal - isoValue) / (k * stdev)) << std::endl;
+                compValue = (std::abs(neighborVal - isoValue) / (k_.get() * stdevValue));
+
                 if ( compValue < 1) {
                     // Only add to queue and change value if voxel has not been accessed before
-//                    std::cout << "val out vol: " << outVolumeDataAccesser->getAsDouble(neighborIndex) << std::endl;
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
-//                        std::cout << "setting" << std::endl;
+
                         // Set voxel value of output index as diff with iso value
                         outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
 
@@ -199,27 +272,54 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel, double boundary) {
                         queue.push_back(neighborIndex);
                     }
                 }
-//                std::cout << "end line" << std::endl;
-                
-                // OLD
-
-                // Check value is within boundary
-//                if ( compValue < boundary && compValue > 0.0) {
-//
-//                    // Only add to queue and change value if voxel has not been accessed before
-//                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
-//                        //std::cout << "index added to queue: " << neighborIndex << std::endl;
-//                        // Set voxel value of output index as diff with iso value
-//                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
-//                        //std::cout << outVolumeDataAccesser->getAsDouble(neighborIndex) << std::endl;
-//                        // Add to queue
-//                        queue.push_back(neighborIndex);
-//                    }
-//                }
             }
-            
         }
+    }
+}
 
+void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
+    // Get acces to data
+    auto gradientVolumeDataAccesser = gradientMagnitudeVolInport_.getData()->getRepresentation<VolumeRAM>();
+    auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
+    
+    // Create queue
+    std::list<ivec3> queue;
+    queue.push_back(seedVoxel);
+    
+    // Get isoValue
+    double gradientValue = gradientVolumeDataAccesser->getAsDouble(seedVoxel);
+    outVolumeDataAccesser->setFromDouble(seedVoxel, gradientValue);
+    
+    // Get standard deviation based on seed voxel neighbors
+    std::pair<double, double> stdevAll = standardDeviationAroundSeed(seedVoxel);
+    double stdevMagGrad = stdevAll.second;
+    
+    while(!queue.empty()) {
+        ivec3 curIndex = queue.front();
+        queue.pop_front();
+
+        for (unsigned long i = 0; i < offsets_.size(); i++) {
+            ivec3 neighborIndex{curIndex + offsets_[i]};
+            
+            // Check that neighbor voxel is within dimensions
+            if (withinDimensions(neighborIndex)) {
+                double neighborGradientVal = gradientVolumeDataAccesser->getAsDouble(neighborIndex);
+                double compValue = neighborGradientVal - gradientValue;
+                compValue = (std::abs(neighborGradientVal - gradientValue) / (k_.get() * stdevMagGrad));
+
+                if ( compValue < 1) {
+                    // Only add to queue and change value if voxel has not been accessed before
+                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
+
+                        // Set voxel value of output index as diff with iso value
+                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+
+                        // Add to queue
+                        queue.push_back(neighborIndex);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -255,8 +355,27 @@ void FloodFillVolume::process() {
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
     auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
     
-    for(auto& pos : positions) {
-        floodFill(getVoxelIndexFromPosition(pos), boundary_.get());
+    switch (method_) {
+        case Method::FloodFill:
+            for(auto& pos : positions) {
+                floodFill(getVoxelIndexFromPosition(pos));
+            }
+            break;
+            
+        case Method::RegionGrowingValuesBased:
+            for(auto& pos : positions) {
+                regionGrowingValuesBased(getVoxelIndexFromPosition(pos));
+            }
+            break;
+            
+        case Method::RegionGrowingBoundaryBased:
+            for(auto& pos : positions) {
+                regionGrowingBoundaryBased(getVoxelIndexFromPosition(pos));
+            }
+            break;
+            
+        default:
+            break;
     }
     
     volumeOutport_.setData(outVolume_);
