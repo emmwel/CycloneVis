@@ -59,6 +59,7 @@ public:
         FloodFill,
         RegionGrowingValuesBased,
         RegionGrowingBoundaryBased,
+        RegionGrowingCombined,
     };
     
     FloodFillVolume();
@@ -73,6 +74,7 @@ public:
     void floodFill(ivec3 seedVoxel);
     void regionGrowingValuesBased(ivec3 seedVoxel);
     void regionGrowingBoundaryBased(ivec3 seedVoxel);
+    void regionGrowingCombined(ivec3 seedVoxel);
     
 
     virtual void process() override;
@@ -95,6 +97,7 @@ private:
     TemplateOptionProperty<Method> method_;
     FloatProperty boundary_;
     FloatProperty k_;
+    FloatProperty p_;
 };
 
 }  // namespace inviwo

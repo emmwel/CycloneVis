@@ -50,11 +50,13 @@ FloodFillVolume::FloodFillVolume()
     , method_("method", "Method",
               {
                 {"floodfill", "Flood Fill", Method::FloodFill},
-                {"RegionGrowingValuesBased", "Region Growing Values Based", Method::RegionGrowingValuesBased},
-                {"RegionGrowingBoundaryBased", "Region Growing Boundary Based", Method::RegionGrowingBoundaryBased}
+                {"regionGrowingValuesBased", "Region Growing Values Based", Method::RegionGrowingValuesBased},
+                {"regionGrowingBoundaryBased", "Region Growing Boundary Based", Method::RegionGrowingBoundaryBased},
+                {"regionGrowingCombined", "Region Growing Combined", Method::RegionGrowingCombined}
               }, 0)
     , boundary_("boundary", "Boundary", 250.0f, 0.0f, 5000.0f, 0.01f)
-    , k_("k_", "Weighting coefficient k", 1.0f, 0.0f, 100.0f, 0.01f)
+    , k_("k_", "Weighting coefficient k", 1.0f, 0.0f, 10.0f, 0.01f)
+    , p_("p_", "Mix coefficient p", 1.0f, 0.0f, 1.0f, 0.01f)
     {
 
     addPort(meshInport_);
@@ -62,24 +64,35 @@ FloodFillVolume::FloodFillVolume()
     addPort(gradientMagnitudeVolInport_);
     addPort(volumeOutport_);
         
-    addProperties(method_, boundary_, k_);
-        boundary_.setVisible(true);
+    addProperties(method_, boundary_, k_, p_);
+    boundary_.setVisible(true);
+    k_.setVisible(false);
+    p_.setVisible(false);
         
     method_.onChange([this](){
         switch (method_) {
             case Method::FloodFill:
                 boundary_.setVisible(true);
                 k_.setVisible(false);
+                p_.setVisible(false);
                 break;
                 
             case Method::RegionGrowingValuesBased:
                 boundary_.setVisible(false);
                 k_.setVisible(true);
+                p_.setVisible(false);
                 break;
                 
             case Method::RegionGrowingBoundaryBased:
                 boundary_.setVisible(false);
                 k_.setVisible(true);
+                p_.setVisible(false);
+                break;
+            
+            case Method::RegionGrowingCombined:
+                boundary_.setVisible(false);
+                k_.setVisible(true);
+                p_.setVisible(true);
                 break;
                 
             default:
@@ -258,15 +271,14 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
-                double compValue = neighborVal - isoValue;
-                compValue = (std::abs(neighborVal - isoValue) / (k_.get() * stdevValue));
+                double fca = (std::abs(neighborVal - isoValue) / (k_.get() * stdevValue));
 
-                if ( compValue < 1) {
+                if ( fca < 1) {
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
 
                         // Set voxel value of output index as diff with iso value
-                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+                        outVolumeDataAccesser->setFromDouble(neighborIndex, fca);
 
                         // Add to queue
                         queue.push_back(neighborIndex);
@@ -288,7 +300,7 @@ void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
     
     // Get isoValue
     double gradientValue = gradientVolumeDataAccesser->getAsDouble(seedVoxel);
-    outVolumeDataAccesser->setFromDouble(seedVoxel, gradientValue);
+    outVolumeDataAccesser->setFromDouble(seedVoxel, 0.0);
     
     // Get standard deviation based on seed voxel neighbors
     std::pair<double, double> stdevAll = standardDeviationAroundSeed(seedVoxel);
@@ -304,15 +316,70 @@ void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
                 double neighborGradientVal = gradientVolumeDataAccesser->getAsDouble(neighborIndex);
-                double compValue = neighborGradientVal - gradientValue;
-                compValue = (std::abs(neighborGradientVal - gradientValue) / (k_.get() * stdevMagGrad));
+                double fcb = (std::abs(neighborGradientVal - gradientValue) / (k_.get() * stdevMagGrad));
 
-                if ( compValue < 1) {
+                if ( fcb < 1) {
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
 
                         // Set voxel value of output index as diff with iso value
-                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+                        outVolumeDataAccesser->setFromDouble(neighborIndex, fcb);
+
+                        // Add to queue
+                        queue.push_back(neighborIndex);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void FloodFillVolume::regionGrowingCombined(ivec3 seedVoxel) {
+    // Get acces to data
+        auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
+    auto gradientVolumeDataAccesser = gradientMagnitudeVolInport_.getData()->getRepresentation<VolumeRAM>();
+    auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
+    
+    // Create queue
+    std::list<ivec3> queue;
+    queue.push_back(seedVoxel);
+    
+    // Get isoValue
+    double isoValue = inVolumeDataAccesser->getAsDouble(seedVoxel);
+    double gradientValue = gradientVolumeDataAccesser->getAsDouble(seedVoxel);
+    outVolumeDataAccesser->setFromDouble(seedVoxel, gradientValue);
+    
+    // Get standard deviation based on seed voxel neighbors
+    std::pair<double, double> stdevAll = standardDeviationAroundSeed(seedVoxel);
+    double stdevValue = stdevAll.first;
+    double stdevMagGrad = stdevAll.second;
+    
+    while(!queue.empty()) {
+        ivec3 curIndex = queue.front();
+        queue.pop_front();
+
+        for (unsigned long i = 0; i < offsets_.size(); i++) {
+            ivec3 neighborIndex{curIndex + offsets_[i]};
+            
+            // Check that neighbor voxel is within dimensions
+            if (withinDimensions(neighborIndex)) {
+                double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
+                double neighborGradientVal = gradientVolumeDataAccesser->getAsDouble(neighborIndex);
+                
+                // Calculate cost functions
+                double fca = (std::abs(neighborVal - isoValue) / (k_.get() * stdevValue));
+                double fcb = (std::abs(neighborGradientVal - gradientValue) / (k_.get() * stdevMagGrad));
+                
+                //double p = stdevMagGrad / (stdevValue + stdevMagGrad);
+                double p = p_.get();
+                double fcc = fca * p + fcb * (1 - p);
+
+                if ( fcc < 1) {
+                    // Only add to queue and change value if voxel has not been accessed before
+                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
+
+                        // Set voxel value of output index as diff with iso value
+                        outVolumeDataAccesser->setFromDouble(neighborIndex, fcc);
 
                         // Add to queue
                         queue.push_back(neighborIndex);
@@ -371,6 +438,12 @@ void FloodFillVolume::process() {
         case Method::RegionGrowingBoundaryBased:
             for(auto& pos : positions) {
                 regionGrowingBoundaryBased(getVoxelIndexFromPosition(pos));
+            }
+            break;
+            
+        case Method::RegionGrowingCombined:
+            for(auto& pos : positions) {
+                regionGrowingCombined(getVoxelIndexFromPosition(pos));
             }
             break;
             
