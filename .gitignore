@@ -1,2 +1,4 @@
 # Ignore data folder
-data/
+data/images/
+data/meshes/
+data/volumes
