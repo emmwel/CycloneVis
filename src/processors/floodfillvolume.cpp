@@ -37,7 +37,7 @@ const ProcessorInfo FloodFillVolume::processorInfo_{
     "Flood Fill Volume",                // Display name
     "CycloneVis",              // Category
     CodeState::Experimental,  // Code state
-    Tags::None,               // Tags
+    Tags::CPU,               // Tags
 };
 const ProcessorInfo FloodFillVolume::getProcessorInfo() const { return processorInfo_; }
 
