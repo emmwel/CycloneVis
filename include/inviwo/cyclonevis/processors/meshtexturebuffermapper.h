@@ -32,7 +32,8 @@
 #include <inviwo/cyclonevis/cyclonevismoduledefine.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/ordinalproperty.h>
-#include <inviwo/core/ports/imageport.h>
+#include <inviwo/core/ports/meshport.h>
+#include <inviwo/core/ports/volumeport.h>
 
 namespace inviwo {
 
@@ -55,14 +56,20 @@ public:
     MeshTextureBufferMapper();
     virtual ~MeshTextureBufferMapper() = default;
 
+    ivec3 getVoxelIndexFromPosition(const dvec3& position);
+    
     virtual void process() override;
 
     virtual const ProcessorInfo getProcessorInfo() const override;
     static const ProcessorInfo processorInfo_;
 
 private:
-    ImageOutport outport_;
-    FloatVec3Property position_;
+    MeshInport meshInport_;
+    VolumeInport volInport_;
+    MeshOutport meshOutport_;
+    
+    Volume* inVolume_;
+    ivec3 dims_;
 };
 
 }  // namespace inviwo

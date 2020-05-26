@@ -43,15 +43,89 @@ const ProcessorInfo MeshTextureBufferMapper::getProcessorInfo() const { return p
 
 MeshTextureBufferMapper::MeshTextureBufferMapper()
     : Processor()
-    , outport_("outport")
-    , position_("position", "Position", vec3(0.0f), vec3(-100.0f), vec3(100.0f)) {
+    , meshInport_("meshInport")
+    , volInport_("volumeInport")
+    , meshOutport_("meshOutport"){
 
-    addPort(outport_);
-    addProperty(position_);
+    addPort(meshInport_);
+    addPort(volInport_);
+    addPort(meshOutport_);
+}
+
+ivec3 MeshTextureBufferMapper::getVoxelIndexFromPosition(const dvec3& position) {
+    
+    // go from world to model coordinates
+    dvec3 modelCoords = dvec3(glm::inverse(inVolume_->getModelMatrix())* dvec4(position, 1));
+    
+    // From BatchVolumeSampler.h //
+    ivec3 voxelPos = ivec3(glm::floor(modelCoords * dvec3(dims_)));
+    
+    // Function which takes modulus within bounds
+    auto modInt = [](int a, int b) {
+        int result = a % b;
+        return result + ((result >> 31) & b);
+    };
+    
+    size3_t indexPos;
+    
+    // Make sure index is within dimensions using modInt
+    for (int i = 0; i < 3; i++) {
+        indexPos[i] = modInt(voxelPos[i], dims_[i]);
+    }
+    
+    return indexPos;
 }
 
 void MeshTextureBufferMapper::process() {
     // outport_.setData(myImage);
+    
+    if (!meshInport_.isReady() || !volInport_.isReady())
+        return;
+    
+    // Get inport volume size
+    inVolume_ = volInport_.getData()->clone();
+    dims_ = ivec3(inVolume_->getDimensions());
+    
+    // Get inport mesh
+    std::shared_ptr<Mesh> mesh(meshInport_.getData()->clone());
+    
+    // Get buffers
+    auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
+    auto texBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::TexcoordAttrib));
+    
+    auto texCoords = texBuffer->getEditableRAMRepresentation()->getDataContainer();
+    auto changeTexCoordsAcceser = texBuffer->getEditableRAMRepresentation();
+    auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
+    
+    // Create volume accesser
+    auto volumeDataAccesser = inVolume_->getEditableRepresentation<VolumeRAM>();
+    // Get range of data
+    dvec2 valueRange = inVolume_->dataMap_.valueRange;
+    
+    for (unsigned long i = 0; i < positions.size(); i++) {
+        vec3 p = positions[i];
+        if (isnan(p.x) || isnan(p.y) || isnan(p.z)) {
+            // do nothing
+            continue;
+        }
+        else {
+            // Get voxel index from mesh position
+            ivec3 voxelIndex = getVoxelIndexFromPosition(p);
+            
+            // Map the voxel value to the mesh texCoord scalar's u(s?)-value
+            double voxelVal = volumeDataAccesser->getAsDouble(voxelIndex);
+            
+            
+            
+            // map value to [0, 1] u-coords range
+            double mappedValue = (voxelVal - valueRange[0]) / (valueRange[1] - valueRange[0]);
+            texCoords[i] = util::glm_convert<vec3>(vec3(mappedValue, texCoords[i].y, texCoords[i].z));
+            changeTexCoordsAcceser->setFromDVec3(i, texCoords[i]);
+            
+        }
+    }
+    
+    meshOutport_.setData(mesh);
 }
 
 }  // namespace inviwo

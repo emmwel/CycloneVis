@@ -297,8 +297,6 @@ void MeshGraph::process() {
     for (unsigned long i = 0; i < graphIndices.size(); i++) {
         indexMeshData.push_back(static_cast<std::uint32_t>(rangedIndices[graphIndices[i]]));
     }
-    std::cout << positions_.size() << std::endl;
-    std::cout << filterPositions.size() << std::endl;
     
     auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
     auto posBuff = util::makeBuffer(std::move(filterPositions));
