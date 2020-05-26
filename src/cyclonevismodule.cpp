@@ -31,12 +31,14 @@
 #include <inviwo/cyclonevis/processors/cyclonecontourlines.h>
 #include <inviwo/cyclonevis/processors/floodfillvolume.h>
 #include <inviwo/cyclonevis/processors/meshgraph.h>
+#include <inviwo/cyclonevis/processors/meshtexturebuffermapper.h>
 #include <inviwo/cyclonevis/processors/volumeslicequad.h>
 
 namespace inviwo {
 
 cyclonevisModule::cyclonevisModule(InviwoApplication* app) : InviwoModule(app, "cyclonevis") {
     registerProcessor<FloodFillVolume>();
+    registerProcessor<MeshTextureBufferMapper>();
     registerProcessor<CycloneContourLines>();
     registerProcessor<MeshGraph>();
     // Add a directory to the search path of the Shadermanager
