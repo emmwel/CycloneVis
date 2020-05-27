@@ -57,6 +57,7 @@ FloodFillVolume::FloodFillVolume()
     , boundary_("boundary", "Boundary", 250.0f, 0.0f, 5000.0f, 0.01f)
     , k_("k_", "Weighting coefficient k", 1.0f, 0.0f, 10.0f, 0.01f)
     , p_("p_", "Mix coefficient p", 1.0f, 0.0f, 1.0f, 0.01f)
+    , valueRange_("valueRange_", "Value Range", vec2{0.0f}, vec2{std::numeric_limits<float>::lowest()}, vec2{std::numeric_limits<float>::max()}, vec2{0.01}, InvalidationLevel::Valid, PropertySemantics::Text)
     {
 
     addPort(meshInport_);
@@ -64,10 +65,11 @@ FloodFillVolume::FloodFillVolume()
     addPort(gradientMagnitudeVolInport_);
     addPort(volumeOutport_);
         
-    addProperties(method_, boundary_, k_, p_);
+    addProperties(method_, boundary_, k_, p_, valueRange_);
     boundary_.setVisible(true);
     k_.setVisible(false);
     p_.setVisible(false);
+    valueRange_.setReadOnly(true);
         
     method_.onChange([this](){
         switch (method_) {
@@ -98,6 +100,10 @@ FloodFillVolume::FloodFillVolume()
             default:
                 break;
         }
+    });
+        
+    volumeInport_.onChange([this](){
+        valueRange_.set(volumeInport_.getData()->dataMap_.valueRange);
     });
         
     // Create offset indices used for floodfill
@@ -215,6 +221,11 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel) {
     // Get user-input boundary
     double boundary = boundary_.get();
     
+    // Prep to set value range of output volume
+    dvec2 valR = valueRange_.get();
+    double maxVal = std::max(valR[1], std::numeric_limits<double>::lowest());
+    double minVal = std::min(valR[0], std::numeric_limits<double>::max());
+    
     while(!queue.empty()) {
         ivec3 curIndex = queue.front();
         queue.pop_front();
@@ -232,6 +243,10 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel) {
 
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
+                        // Check if the valueRange has been changed
+                        maxVal = std::max(maxVal, neighborVal);
+                        minVal = std::min(minVal, neighborVal);
+                        
                         // Set voxel value of output index as diff with iso value
                         outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
 
@@ -242,6 +257,9 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel) {
             }
         }
     }
+    
+    // Set new value range
+    valueRange_.set({minVal, maxVal});
 }
 
 void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
@@ -261,6 +279,11 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
     std::pair<double, double> stdevAll = standardDeviationAroundSeed(seedVoxel);
     double stdevValue = stdevAll.first;
     
+    // Prep to set value range of output volume
+    dvec2 valR = valueRange_.get();
+    double maxVal = std::max(valR[1], std::numeric_limits<double>::lowest());
+    double minVal = std::min(valR[0], std::numeric_limits<double>::max());
+    
     while(!queue.empty()) {
         ivec3 curIndex = queue.front();
         queue.pop_front();
@@ -276,6 +299,9 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
                 if ( fca < 1) {
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
+                        // Check if the valueRange has been changed
+                        maxVal = std::max(maxVal, neighborVal);
+                        minVal = std::min(minVal, neighborVal);
 
                         // Set voxel value of output index as diff with iso value
                         outVolumeDataAccesser->setFromDouble(neighborIndex, fca);
@@ -287,10 +313,14 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
             }
         }
     }
+    
+    // Set new value range
+    valueRange_.set({minVal, maxVal});
 }
 
 void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
     // Get acces to data
+    auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
     auto gradientVolumeDataAccesser = gradientMagnitudeVolInport_.getData()->getRepresentation<VolumeRAM>();
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
     
@@ -306,6 +336,11 @@ void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
     std::pair<double, double> stdevAll = standardDeviationAroundSeed(seedVoxel);
     double stdevMagGrad = stdevAll.second;
     
+    // Prep to set value range of output volume
+    dvec2 valR = valueRange_.get();
+    double maxVal = std::max(valR[1], std::numeric_limits<double>::lowest());
+    double minVal = std::min(valR[0], std::numeric_limits<double>::max());
+    
     while(!queue.empty()) {
         ivec3 curIndex = queue.front();
         queue.pop_front();
@@ -315,12 +350,17 @@ void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
             
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
+                double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
                 double neighborGradientVal = gradientVolumeDataAccesser->getAsDouble(neighborIndex);
                 double fcb = (std::abs(neighborGradientVal - gradientValue) / (k_.get() * stdevMagGrad));
 
                 if ( fcb < 1) {
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
+                        
+                        // Check if the valueRange has been changed
+                        maxVal = std::max(maxVal, neighborVal);
+                        minVal = std::min(minVal, neighborVal);
 
                         // Set voxel value of output index as diff with iso value
                         outVolumeDataAccesser->setFromDouble(neighborIndex, fcb);
@@ -332,11 +372,14 @@ void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
             }
         }
     }
+    
+    // Set new value range
+    valueRange_.set({minVal, maxVal});
 }
 
 void FloodFillVolume::regionGrowingCombined(ivec3 seedVoxel) {
     // Get acces to data
-        auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
+    auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
     auto gradientVolumeDataAccesser = gradientMagnitudeVolInport_.getData()->getRepresentation<VolumeRAM>();
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
     
@@ -353,6 +396,11 @@ void FloodFillVolume::regionGrowingCombined(ivec3 seedVoxel) {
     std::pair<double, double> stdevAll = standardDeviationAroundSeed(seedVoxel);
     double stdevValue = stdevAll.first;
     double stdevMagGrad = stdevAll.second;
+    
+    // Prep to set value range of output volume
+    dvec2 valR = valueRange_.get();
+    double maxVal = std::max(valR[1], std::numeric_limits<double>::lowest());
+    double minVal = std::min(valR[0], std::numeric_limits<double>::max());
     
     while(!queue.empty()) {
         ivec3 curIndex = queue.front();
@@ -377,6 +425,10 @@ void FloodFillVolume::regionGrowingCombined(ivec3 seedVoxel) {
                 if ( fcc < 1) {
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > 1) {
+                        
+                        // Check if the valueRange has been changed
+                        maxVal = std::max(maxVal, neighborVal);
+                        minVal = std::min(minVal, neighborVal);
 
                         // Set voxel value of output index as diff with iso value
                         outVolumeDataAccesser->setFromDouble(neighborIndex, fcc);
@@ -388,6 +440,9 @@ void FloodFillVolume::regionGrowingCombined(ivec3 seedVoxel) {
             }
         }
     }
+    
+    // Set new value range
+    valueRange_.set({minVal, maxVal});
 }
 
 void FloodFillVolume::process() {
@@ -424,24 +479,32 @@ void FloodFillVolume::process() {
     
     switch (method_) {
         case Method::FloodFill:
+            // Reset valueRange_
+            valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
                 floodFill(getVoxelIndexFromPosition(pos));
             }
             break;
             
         case Method::RegionGrowingValuesBased:
+            // Reset valueRange_
+            valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
                 regionGrowingValuesBased(getVoxelIndexFromPosition(pos));
             }
             break;
             
         case Method::RegionGrowingBoundaryBased:
+            // Reset valueRange_
+            valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
                 regionGrowingBoundaryBased(getVoxelIndexFromPosition(pos));
             }
             break;
             
         case Method::RegionGrowingCombined:
+            // Reset valueRange_
+            valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
                 regionGrowingCombined(getVoxelIndexFromPosition(pos));
             }

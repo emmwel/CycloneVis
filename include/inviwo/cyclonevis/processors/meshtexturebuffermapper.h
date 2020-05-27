@@ -70,6 +70,8 @@ private:
     
     Volume* inVolume_;
     ivec3 dims_;
+    
+    FloatVec2Property valueRange_;
 };
 
 }  // namespace inviwo

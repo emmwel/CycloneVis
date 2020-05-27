@@ -98,6 +98,9 @@ private:
     FloatProperty boundary_;
     FloatProperty k_;
     FloatProperty p_;
+    
+    // Used when mapping texture values in another processor
+    FloatVec2Property valueRange_;
 };
 
 }  // namespace inviwo
