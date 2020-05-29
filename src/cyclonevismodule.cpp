@@ -32,6 +32,7 @@
 #include <inviwo/cyclonevis/processors/floodfillvolume.h>
 #include <inviwo/cyclonevis/processors/meshgraph.h>
 #include <inviwo/cyclonevis/processors/meshtexturebuffermapper.h>
+#include <inviwo/cyclonevis/processors/texturedmeshrenderer.h>
 #include <inviwo/cyclonevis/processors/volumeslicequad.h>
 
 namespace inviwo {
@@ -47,6 +48,7 @@ cyclonevisModule::cyclonevisModule(InviwoApplication* app) : InviwoModule(app, "
     // Register objects that can be shared with the rest of inviwo here:
 
     // Processors
+    registerProcessor<TexturedMeshRenderer>();
     registerProcessor<VolumeSliceQuad>();
     // registerProcessor<cyclonevisProcessor>();
 

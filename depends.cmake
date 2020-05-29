@@ -3,6 +3,7 @@
 set(dependencies
     #InviwoOpenGLModule # Example dependency
     InviwoBaseModule
+    InviwoOpenGLModule
 
 )
 
