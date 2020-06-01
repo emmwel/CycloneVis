@@ -46,7 +46,6 @@ const ProcessorInfo MeshGraph::getProcessorInfo() const { return processorInfo_;
 MeshGraph::MeshGraph()
     : Processor()
     , meshInport_("meshInport")
-    , volInport_("volumeInport")
     , outport_("outport")
     , filterVertices_("filterVertices", "Filter Vertices", false)
     , filterEdges_("filterEdges", "Filter Edges", false)
@@ -60,7 +59,6 @@ MeshGraph::MeshGraph()
     , graphCreated_(false) {
     
     addPort(meshInport_);
-    addPort(volInport_);
     addPort(outport_);
     addProperties(filterVertices_, filterXMin_, filterXMax_, filterYMin_, filterYMax_, filterZMin_, filterZMax_, filterEdges_, filterEdgeLength_);
     
@@ -75,13 +73,7 @@ MeshGraph::MeshGraph()
         
     meshInport_.onChange([this]() {
         meshInportOnChange();
-    });
-        
-    volInport_.onChange([this]() {
-        volume_ = volInport_.getData();
-        //auto gah = volInport_.get
-    });
-        
+    });     
 }
 
 void MeshGraph::meshInportOnChange() {

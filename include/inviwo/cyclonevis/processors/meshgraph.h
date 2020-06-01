@@ -75,7 +75,6 @@ public:
 
 private:
     MeshInport meshInport_;
-    VolumeInport volInport_;
     MeshOutport outport_;
     
     // Functions which handle inport data changes
