@@ -81,9 +81,12 @@ public:
 
 private:
     MeshInport inport_;
-	ImageInport textureInport_;
+	ImageInport textureOneInport_;
+	ImageInport textureTwoInport_;
 	ImageInport backgroundInport_;
 	ImageOutport outport_;
+
+	FloatProperty blendCoef_;
 
 	CameraProperty camera_;
 	CameraTrackball trackball_;

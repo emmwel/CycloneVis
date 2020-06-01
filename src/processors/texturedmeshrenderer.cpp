@@ -47,6 +47,7 @@
 #include <inviwo/core/algorithm/boundingbox.h>
 
 #include <limits>
+#include "windows.h"
 
 namespace inviwo {
 
@@ -63,9 +64,11 @@ const ProcessorInfo TexturedMeshRenderer::getProcessorInfo() const { return proc
 TexturedMeshRenderer::TexturedMeshRenderer()
     : Processor()
 	, inport_("geometry")
-	, textureInport_("textureInport", true)
+	, textureOneInport_("textureOneInport", true)
+	, textureTwoInport_("textureTwoInport", true)
 	, backgroundInport_("backgroundInport", true)
 	, outport_("image")
+	, blendCoef_("blendCoef", "Image Blend Coefficient", 0.5f, 0.0f, 1.0f, 0.1f)	
 	, camera_("camera", "Camera", util::boundingBox(inport_))
 	, trackball_(&camera_)
 	, overrideColorBuffer_("overrideColorBuffer", "Override Color Buffer", false,
@@ -92,11 +95,12 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 	, shader_("texturedmeshrendering.vert", "texturedmeshrendering.frag", false) {
 
 	addPort(inport_);
-	addPort(textureInport_);
+	addPort(textureOneInport_);
+	addPort(textureTwoInport_).setOptional(true);
 	addPort(backgroundInport_).setOptional(true);
 	addPort(outport_);
 
-	addProperties(camera_, meshProperties_, lightingProperty_, trackball_, layers_);
+	addProperties(blendCoef_, camera_, meshProperties_, lightingProperty_, trackball_, layers_);
 
 	meshProperties_.addProperties(cullFace_, enableDepthTest_, overrideColorBuffer_,
 		overrideColor_);
@@ -148,17 +152,27 @@ void TexturedMeshRenderer::initializeResources() {
 }
 
 void TexturedMeshRenderer::process() {
+
 	utilgl::activateTargetAndClearOrCopySource(outport_, backgroundInport_);
 	shader_.activate();
 
 	// Textures
-	TextureUnit colorTexUnit;
+	TextureUnit colorOneTexUnit, colorTwoTexUnit;
 
-	if (textureInport_.isReady()) {
-		utilgl::bindColorTexture(textureInport_, colorTexUnit.getEnum());
+	if (textureOneInport_.isReady()) {
+		utilgl::bindColorTexture(textureOneInport_, colorOneTexUnit.getEnum());
 	}
 
-	shader_.setUniform("inportTexture", colorTexUnit.getUnitNumber());
+	if (textureTwoInport_.isReady()) {
+		utilgl::bindColorTexture(textureTwoInport_, colorTwoTexUnit.getEnum());
+	}
+	else {
+		utilgl::bindColorTexture(textureOneInport_, colorTwoTexUnit.getEnum());
+	}
+
+	shader_.setUniform("inportOneTexture", colorOneTexUnit.getUnitNumber());
+	shader_.setUniform("inportTwoTexture", colorTwoTexUnit.getUnitNumber());
+	shader_.setUniform("blendCoef", blendCoef_.get());
 
 	utilgl::GlBoolState depthTest(GL_DEPTH_TEST, enableDepthTest_);
 	utilgl::CullFaceState culling(cullFace_);

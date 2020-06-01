@@ -39,7 +39,9 @@
 uniform LightParameters lighting;
 uniform CameraParameters camera;
 
-uniform sampler2D inportTexture;
+uniform sampler2D inportOneTexture;
+uniform sampler2D inportTwoTexture;
+uniform float blendCoef;
 
 in vec4 worldPosition_;
 in vec3 normal_;
@@ -50,7 +52,7 @@ flat in vec4 pickColor_;
 
 void main() {
     vec4 fragColor = color_;
-	fragColor = texture(inportTexture, texCoord_.xy).rgba;
+	fragColor = blendCoef * texture(inportOneTexture, texCoord_.xy).rgba + (1.0f - blendCoef) * texture(inportTwoTexture, texCoord_.xy).rgba;
     vec3 toCameraDir_ = camera.position - worldPosition_.xyz;
 
 	fragColor.rgb = APPLY_LIGHTING(lighting, fragColor.rgb, fragColor.rgb, fragColor.rgb, worldPosition_.xyz,
