@@ -36,6 +36,8 @@ ivw_group("Source Files" ${SOURCE_FILES})
 #--------------------------------------------------------------------
 # Add shaders
 set(SHADER_FILES
+    glsl/texturedmeshrendering.frag
+    glsl/texturedmeshrendering.vert
 )
 ivw_group("Shader Files" ${SHADER_FILES})
 
@@ -51,5 +53,5 @@ ivw_add_unittest(${TEST_FILES})
 ivw_create_module(${SOURCE_FILES} ${HEADER_FILES} ${SHADER_FILES})
 
 #--------------------------------------------------------------------
-# Add shader directory to pack
-# ivw_add_to_module_pack(${CMAKE_CURRENT_SOURCE_DIR}/glsl)
+# Package or build shaders into resources
+ivw_handle_shader_resources(${CMAKE_CURRENT_SOURCE_DIR}/glsl ${SHADER_FILES})
