@@ -96,6 +96,7 @@ private:
     // Methods
     TemplateOptionProperty<Method> method_;
     FloatProperty boundary_;
+	double boundaryHelp_;
     FloatProperty k_;
     FloatProperty p_;
     

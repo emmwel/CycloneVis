@@ -68,6 +68,14 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 	, textureTwoInport_("textureTwoInport", true)
 	, backgroundInport_("backgroundInport", true)
 	, outport_("image")
+	, method_("method", "Method",
+		{
+		  {"weightedSumMode", "Weighted Sum", Method::WeightedSumMode},
+		  {"multiplyMode", "Multiply", Method::MultiplyMode},
+		  {"screenMode", "Screen", Method::ScreenMode},
+		  {"overlayMode", "Overlay", Method::OverlayMode},
+		  {"softLightMode", "Soft Light", Method::SoftLightMode}
+		}, 0)
 	, blendCoef_("blendCoef", "Image Blend Coefficient", 0.5f, 0.0f, 1.0f, 0.1f)	
 	, camera_("camera", "Camera", util::boundingBox(inport_))
 	, trackball_(&camera_)
@@ -100,7 +108,7 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 	addPort(backgroundInport_).setOptional(true);
 	addPort(outport_);
 
-	addProperties(blendCoef_, camera_, meshProperties_, lightingProperty_, trackball_, layers_);
+	addProperties(method_, blendCoef_, camera_, meshProperties_, lightingProperty_, trackball_, layers_);
 
 	meshProperties_.addProperties(cullFace_, enableDepthTest_, overrideColorBuffer_,
 		overrideColor_);
@@ -109,6 +117,33 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 		.visibilityDependsOn(overrideColorBuffer_, [](const BoolProperty p) { return p.get(); });
 
 	layers_.addProperties(colorLayer_, texCoordLayer_, normalsLayer_, viewNormalsLayer_);
+
+	method_.onChange([this]() {
+		switch (method_) {
+			case Method::WeightedSumMode:
+				blendCoef_.setVisible(true);
+				break;
+
+			case Method::MultiplyMode:
+				blendCoef_.setVisible(false);
+				break;
+
+			case Method::ScreenMode:
+				blendCoef_.setVisible(false);
+				break;
+
+			case Method::OverlayMode:
+				blendCoef_.setVisible(false);
+				break;
+
+			case Method::SoftLightMode:
+				blendCoef_.setVisible(false);
+				break;
+
+			default:
+				break;
+		}
+	});
 
 	shader_.onReload([this]() { invalidate(InvalidationLevel::InvalidResources); });
 }
@@ -170,9 +205,13 @@ void TexturedMeshRenderer::process() {
 		utilgl::bindColorTexture(textureOneInport_, colorTwoTexUnit.getEnum());
 	}
 
+	// Blending mode
+	int whichMode = method_.getSelectedIndex();
+
 	shader_.setUniform("inportOneTexture", colorOneTexUnit.getUnitNumber());
 	shader_.setUniform("inportTwoTexture", colorTwoTexUnit.getUnitNumber());
 	shader_.setUniform("blendCoef", blendCoef_.get());
+	shader_.setUniform("blendMode", whichMode);
 
 	utilgl::GlBoolState depthTest(GL_DEPTH_TEST, enableDepthTest_);
 	utilgl::CullFaceState culling(cullFace_);

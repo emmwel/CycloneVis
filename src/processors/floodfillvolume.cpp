@@ -236,10 +236,10 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel) {
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
-                double compValue = neighborVal - isoValue;
+                double compValue = std::abs(neighborVal - isoValue);
 
                 // Check value is within boundary
-                if ( compValue < boundary && compValue > 0.0) {
+                if ( compValue < boundary) {
 
                     // Only add to queue and change value if voxel has not been accessed before
                     if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
@@ -271,8 +271,8 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
     std::list<ivec3> queue;
     queue.push_back(seedVoxel);
     
-    // Get isoValue
-    double isoValue = inVolumeDataAccesser->getAsDouble(seedVoxel);
+    // Get seed value
+    double seedValue = inVolumeDataAccesser->getAsDouble(seedVoxel);
     outVolumeDataAccesser->setFromDouble(seedVoxel, 0.0);
     
     // Get standard deviation based on seed voxel neighbors
@@ -294,7 +294,7 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
                 double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
-                double fca = (std::abs(neighborVal - isoValue) / (k_.get() * stdevValue));
+                double fca = (std::abs(neighborVal - seedValue) / (k_.get() * stdevValue));
 
                 if ( fca < 1) {
                     // Only add to queue and change value if voxel has not been accessed before

@@ -27,7 +27,7 @@
  * 
  *********************************************************************************/
 
-// Owned by the MeshRenderProcessorGL Processor
+// Owned by the TexturedMeshRenderer Processor
 
 #include "utils/shading.glsl"
 
@@ -42,6 +42,7 @@ uniform CameraParameters camera;
 uniform sampler2D inportOneTexture;
 uniform sampler2D inportTwoTexture;
 uniform float blendCoef;
+uniform int blendMode;
 
 in vec4 worldPosition_;
 in vec3 normal_;
@@ -50,9 +51,84 @@ in vec3 texCoord_;
 in vec4 color_;
 flat in vec4 pickColor_;
 
+vec3 overlayBlender(vec3 a, vec3 b) {
+	vec3 outBlend = vec3(0.0);
+
+	for (int i = 0; i < 3; i++) {
+		float a = a[i];
+		float b = b[i];
+		
+		if (a < 0.5) {
+			outBlend[i] = 2 * a * b; 
+		}
+		else {
+			outBlend[i] = 1.0 - (2 * (1 - a) * (1 - b));
+		}
+	}
+
+	return outBlend;
+}
+
+vec3 softLightBlender(vec3 a, vec3 b) {
+	vec3 outBlend = vec3(0.0);
+
+	for (int i = 0; i < 3; i++) {
+		float a = a[i];
+		float b = b[i];
+
+		if (b < 0.5) {
+			outBlend[i] = (2.0 * a * b) + (a * a * (1.0 - 2.0 * b)); 
+		}
+		else {
+			outBlend[i] = (2.0 * a * (1.0 - b)) + (sqrt(a) * (2 * b - 1.0));
+		}
+	}
+
+	return outBlend;
+}
+
 void main() {
-    vec4 fragColor = color_;
-	fragColor = blendCoef * texture(inportOneTexture, texCoord_.xy).rgba + (1.0f - blendCoef) * texture(inportTwoTexture, texCoord_.xy).rgba;
+
+	// apply color according to blend mode
+	// inportTextureOne is background layer, inportTextureTwo is the top layer
+	vec4 fragColor = color_;
+
+	if (blendMode == 0) {
+		// Weighted sum
+		fragColor = blendCoef * texture(inportOneTexture, texCoord_.xy).rgba + (1.0f - blendCoef) * texture(inportTwoTexture, texCoord_.xy).rgba;
+	}
+	if (blendMode == 1) {
+		// Multiply
+		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
+		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
+
+		fragColor = vec4(backgroundLayer * topLayer, 1.0);
+	}
+	if (blendMode == 2) {
+		// Screen
+		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
+		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
+
+		fragColor = vec4(vec3(1.0) - (vec3(1.0) - backgroundLayer) * (vec3(1.0) - topLayer), 1.0);
+	}
+	if (blendMode == 3) {
+		// Overlay
+		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
+		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
+
+		fragColor = vec4(overlayBlender(backgroundLayer, topLayer), 1.0);
+	}
+	if (blendMode == 4) {
+		// Soft Light -- Photoshop version
+		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
+		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
+
+		fragColor = vec4(softLightBlender(backgroundLayer, topLayer), 1.0);
+	
+	}
+
+    
+	
     vec3 toCameraDir_ = camera.position - worldPosition_.xyz;
 
 	fragColor.rgb = APPLY_LIGHTING(lighting, fragColor.rgb, fragColor.rgb, fragColor.rgb, worldPosition_.xyz,

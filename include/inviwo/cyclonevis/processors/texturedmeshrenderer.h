@@ -65,6 +65,14 @@ namespace inviwo {
  */
 class IVW_MODULE_CYCLONEVIS_API TexturedMeshRenderer : public Processor {
 public:
+	enum class Method {
+		WeightedSumMode,
+		MultiplyMode,
+		ScreenMode,
+		OverlayMode,
+		SoftLightMode,
+	};
+
     TexturedMeshRenderer();
 
 	// delete copy and assigment
@@ -86,6 +94,8 @@ private:
 	ImageInport backgroundInport_;
 	ImageOutport outport_;
 
+	// Blend modes methods
+	TemplateOptionProperty<Method> method_;
 	FloatProperty blendCoef_;
 
 	CameraProperty camera_;
