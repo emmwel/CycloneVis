@@ -254,6 +254,10 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel) {
                         queue.push_back(neighborIndex);
                     }
                 }
+
+				else {
+					outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+				}
             }
         }
     }
@@ -310,6 +314,10 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
                         queue.push_back(neighborIndex);
                     }
                 }
+
+				else {
+					outVolumeDataAccesser->setFromDouble(neighborIndex, fca);
+				}
             }
         }
     }
@@ -369,6 +377,10 @@ void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
                         queue.push_back(neighborIndex);
                     }
                 }
+				else {
+					outVolumeDataAccesser->setFromDouble(neighborIndex, fcb);
+				}
+
             }
         }
     }
@@ -437,6 +449,9 @@ void FloodFillVolume::regionGrowingCombined(ivec3 seedVoxel) {
                         queue.push_back(neighborIndex);
                     }
                 }
+				else {
+					outVolumeDataAccesser->setFromDouble(neighborIndex, fcc);
+				}
             }
         }
     }
@@ -461,7 +476,7 @@ void FloodFillVolume::process() {
     
     // Set all output voxel values to max possible number
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
-    double maxDouble = std::numeric_limits<double>::max();
+    double maxDouble = 10000;
     
     // Loop through all voxels and set to max value
     for (int i = 0; i < dims_.x; i++) {

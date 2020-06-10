@@ -43,6 +43,7 @@ uniform sampler2D inportOneTexture;
 uniform sampler2D inportTwoTexture;
 uniform float blendCoef;
 uniform int blendMode;
+uniform float opacity;
 
 in vec4 worldPosition_;
 in vec3 normal_;
@@ -95,7 +96,10 @@ void main() {
 
 	if (blendMode == 0) {
 		// Weighted sum
-		fragColor = blendCoef * texture(inportOneTexture, texCoord_.xy).rgba + (1.0f - blendCoef) * texture(inportTwoTexture, texCoord_.xy).rgba;
+		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
+		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
+
+		fragColor = vec4((blendCoef * backgroundLayer + (1 - blendCoef) * topLayer), 1.0);
 	}
 	if (blendMode == 1) {
 		// Multiply
@@ -109,7 +113,7 @@ void main() {
 		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
 		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
 
-		fragColor = vec4(vec3(1.0) - (vec3(1.0) - backgroundLayer) * (vec3(1.0) - topLayer), 1.0);
+		fragColor = vec4((vec3(1.0) - (vec3(1.0) - backgroundLayer) * (vec3(1.0) - topLayer)), 1.0);
 	}
 	if (blendMode == 3) {
 		// Overlay

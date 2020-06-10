@@ -76,7 +76,8 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 		  {"overlayMode", "Overlay", Method::OverlayMode},
 		  {"softLightMode", "Soft Light", Method::SoftLightMode}
 		}, 0)
-	, blendCoef_("blendCoef", "Image Blend Coefficient", 0.5f, 0.0f, 1.0f, 0.1f)	
+	, blendCoef_("blendCoef", "Image Blend Coefficient", 0.5f, 0.0f, 1.0f, 0.1f)
+	, opacity_("opacity", "Opacity", 1.0f, 0.0f, 1.0f, 0.1f)
 	, camera_("camera", "Camera", util::boundingBox(inport_))
 	, trackball_(&camera_)
 	, overrideColorBuffer_("overrideColorBuffer", "Override Color Buffer", false,
@@ -108,7 +109,7 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 	addPort(backgroundInport_).setOptional(true);
 	addPort(outport_);
 
-	addProperties(method_, blendCoef_, camera_, meshProperties_, lightingProperty_, trackball_, layers_);
+	addProperties(method_, blendCoef_, opacity_, camera_, meshProperties_, lightingProperty_, trackball_, layers_);
 
 	meshProperties_.addProperties(cullFace_, enableDepthTest_, overrideColorBuffer_,
 		overrideColor_);
@@ -212,6 +213,7 @@ void TexturedMeshRenderer::process() {
 	shader_.setUniform("inportTwoTexture", colorTwoTexUnit.getUnitNumber());
 	shader_.setUniform("blendCoef", blendCoef_.get());
 	shader_.setUniform("blendMode", whichMode);
+	shader_.setUniform("opacity", opacity_.get());
 
 	utilgl::GlBoolState depthTest(GL_DEPTH_TEST, enableDepthTest_);
 	utilgl::CullFaceState culling(cullFace_);

@@ -97,6 +97,7 @@ private:
 	// Blend modes methods
 	TemplateOptionProperty<Method> method_;
 	FloatProperty blendCoef_;
+	FloatProperty opacity_;
 
 	CameraProperty camera_;
 	CameraTrackball trackball_;
