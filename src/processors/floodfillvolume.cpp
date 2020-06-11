@@ -55,6 +55,7 @@ FloodFillVolume::FloodFillVolume()
                 {"regionGrowingCombined", "Region Growing Combined", Method::RegionGrowingCombined}
               }, 0)
     , boundary_("boundary", "Boundary", 250.0f, 0.0f, 5000.0f, 0.01f)
+	, suggestedIsoVal_("suggestedIsoVal", "Suggested ISO", 250.0f, 0.0f, 5000.0f, 0.01f)
     , k_("k_", "Weighting coefficient k", 1.0f, 0.0f, 10.0f, 0.01f)
     , p_("p_", "Mix coefficient p", 1.0f, 0.0f, 1.0f, 0.01f)
     , valueRange_("valueRange_", "Value Range", vec2{0.0f}, vec2{std::numeric_limits<float>::lowest()}, vec2{std::numeric_limits<float>::max()}, vec2{0.01}, InvalidationLevel::Valid, PropertySemantics::Text)
@@ -65,8 +66,9 @@ FloodFillVolume::FloodFillVolume()
     addPort(gradientMagnitudeVolInport_);
     addPort(volumeOutport_);
         
-    addProperties(method_, boundary_, k_, p_, valueRange_);
+    addProperties(method_, boundary_, k_, p_, valueRange_, suggestedIsoVal_);
     boundary_.setVisible(true);
+	suggestedIsoVal_.setReadOnly(true);
     k_.setVisible(false);
     p_.setVisible(false);
     valueRange_.setReadOnly(true);
@@ -494,6 +496,9 @@ void FloodFillVolume::process() {
     
     switch (method_) {
         case Method::FloodFill:
+			// Set suggested iso
+			suggestedIsoVal_.set(boundary_.get());
+
             // Reset valueRange_
             valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
@@ -502,6 +507,9 @@ void FloodFillVolume::process() {
             break;
             
         case Method::RegionGrowingValuesBased:
+			// Set suggested iso
+			suggestedIsoVal_.set(1.f);
+
             // Reset valueRange_
             valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
@@ -510,6 +518,9 @@ void FloodFillVolume::process() {
             break;
             
         case Method::RegionGrowingBoundaryBased:
+			// Set suggested iso
+			suggestedIsoVal_.set(1.f);
+
             // Reset valueRange_
             valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
@@ -518,6 +529,9 @@ void FloodFillVolume::process() {
             break;
             
         case Method::RegionGrowingCombined:
+			// Set suggested iso
+			suggestedIsoVal_.set(1.f);
+
             // Reset valueRange_
             valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {

@@ -74,7 +74,8 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 		  {"multiplyMode", "Multiply", Method::MultiplyMode},
 		  {"screenMode", "Screen", Method::ScreenMode},
 		  {"overlayMode", "Overlay", Method::OverlayMode},
-		  {"softLightMode", "Soft Light", Method::SoftLightMode}
+		  {"softLightMode", "Soft Light", Method::SoftLightMode},
+		  {"softLightAdobeVerMode", "Soft Light Adobe Ver", Method::SoftLightAdobeVerMode}
 		}, 0)
 	, blendCoef_("blendCoef", "Image Blend Coefficient", 0.5f, 0.0f, 1.0f, 0.1f)
 	, opacity_("opacity", "Opacity", 1.0f, 0.0f, 1.0f, 0.1f)
@@ -138,6 +139,10 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 				break;
 
 			case Method::SoftLightMode:
+				blendCoef_.setVisible(false);
+				break;
+
+			case Method::SoftLightAdobeVerMode:
 				blendCoef_.setVisible(false);
 				break;
 

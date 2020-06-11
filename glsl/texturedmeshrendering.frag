@@ -70,6 +70,7 @@ vec3 overlayBlender(vec3 a, vec3 b) {
 	return outBlend;
 }
 
+// Wiki soft light
 vec3 softLightBlender(vec3 a, vec3 b) {
 	vec3 outBlend = vec3(0.0);
 
@@ -82,6 +83,35 @@ vec3 softLightBlender(vec3 a, vec3 b) {
 		}
 		else {
 			outBlend[i] = (2.0 * a * (1.0 - b)) + (sqrt(a) * (2 * b - 1.0));
+		}
+	}
+
+	return outBlend;
+}
+
+float discontinuityFix(float x) {
+	if (x > 0.25) {
+		return sqrt(x);
+		
+	}
+	else {
+		return ((16 * x - 12) * x + 4) * x;
+	}
+}
+
+// Adobe PDF soft light
+vec3 softLightBlenderVer2(vec3 a, vec3 b) {
+	vec3 outBlend = vec3(0.0);
+
+	for (int i = 0; i < 3; i++) {
+		float a = a[i];
+		float b = b[i];
+
+		if (b > 0.5) {
+			outBlend[i] = a + (2 * b - 1) * (discontinuityFix(a) - a);
+		}
+		else {
+			outBlend[i] = a - (1 - 2*b) * a * (1 - a); 
 		}
 	}
 
@@ -123,11 +153,20 @@ void main() {
 		fragColor = vec4(overlayBlender(backgroundLayer, topLayer), 1.0);
 	}
 	if (blendMode == 4) {
-		// Soft Light -- Photoshop version
+		// Soft Light -- Wiki version
 		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
 		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
 
 		fragColor = vec4(softLightBlender(backgroundLayer, topLayer), 1.0);
+	
+	}
+
+	if (blendMode == 5) {
+		// Soft Light -- Adobe version
+		vec3 backgroundLayer = texture(inportOneTexture, texCoord_.xy).rgb;
+		vec3 topLayer = texture(inportTwoTexture, texCoord_.xy).rgb;
+
+		fragColor = vec4(softLightBlenderVer2(backgroundLayer, topLayer), 1.0);
 	
 	}
 

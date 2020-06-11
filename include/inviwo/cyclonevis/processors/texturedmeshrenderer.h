@@ -71,6 +71,7 @@ public:
 		ScreenMode,
 		OverlayMode,
 		SoftLightMode,
+		SoftLightAdobeVerMode,
 	};
 
     TexturedMeshRenderer();
