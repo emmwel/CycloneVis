@@ -128,34 +128,20 @@ void MeshTextureBufferMapper::process() {
             double voxelVal = volumeDataAccesser->getAsDouble(voxelIndex);
             minVal = std::min(minVal, voxelVal);
             maxVal = std::max(maxVal, voxelVal);
+
+			// map value to [0, 1] u-coords range
+			double mappedValue = (voxelVal - valueRange[0]) / (valueRange[1] - valueRange[0]);
+
+			texCoords[i] = util::glm_convert<vec3>(vec3(mappedValue, texCoords[i].y, texCoords[i].z));
+			changeTexCoordsAcceser->setFromDVec3(i, texCoords[i]);
+
+
             
         }
     }
 
 	surfaceValueRange_.set(vec2(minVal, maxVal));
-    
-    for (unsigned long i = 0; i < positions.size(); i++) {
-        vec3 p = positions[i];
-        if (isnan(p.x) || isnan(p.y) || isnan(p.z)) {
-            // do nothing
-            continue;
-        }
-        else {
-            // Get voxel index from mesh position
-            ivec3 voxelIndex = getVoxelIndexFromPosition(p);
-            
-            // Map the voxel value to the mesh texCoord scalar's u(s?)-value
-            double voxelVal = volumeDataAccesser->getAsDouble(voxelIndex);
-            
-            // map value to [0, 1] u-coords range
-            //std::cout << voxelVal << std::endl;
-            double mappedValue = (voxelVal - minVal) / (maxVal - minVal);
-            //std::cout << mappedValue << std::endl;
-            texCoords[i] = util::glm_convert<vec3>(vec3(mappedValue, texCoords[i].y, texCoords[i].z));
-            changeTexCoordsAcceser->setFromDVec3(i, texCoords[i]);
-            
-        }
-    }
+
     
     meshOutport_.setData(mesh);
 }
