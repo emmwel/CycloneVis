@@ -150,7 +150,7 @@ size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position) {
     // From BatchVolumeSampler.h //
     ivec3 voxelPos = ivec3(glm::floor(modelCoords * dvec3(dims_)));
     
-    // Function which takes modulus within bounds
+    // Function which takes modulus within bounds (from batchvolumesampler by Martin)
     auto modInt = [](int a, int b) {
         int result = a % b;
         return result + ((result >> 31) & b);
@@ -166,8 +166,14 @@ size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position) {
     return indexPos;
 }
 
-bool FloodFillVolume::withinDimensions(ivec3 i) {
-    return glm::all(glm::greaterThan(i, ivec3(0))) && glm::all(glm::lessThan(i, dims_));
+bool FloodFillVolume::withinDimensions(ivec3 index) {
+	// TODO: change so region can starts on other side of bound for the x-dimension.
+	// DONE, might need to some tests
+
+	// Apply mod on x-dimension so region grows from one edge to the other
+	ivec3 newIndex = ivec3(index[0] % dims_[0], index[1], index[2]);
+
+    return glm::all(glm::greaterThanEqual(newIndex, ivec3(0))) && glm::all(glm::lessThan(newIndex, dims_));
 }
 
 std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 seedVoxel) {
