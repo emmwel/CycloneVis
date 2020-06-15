@@ -134,9 +134,6 @@ void MeshTextureBufferMapper::process() {
 
 			texCoords[i] = util::glm_convert<vec3>(vec3(mappedValue, texCoords[i].y, texCoords[i].z));
 			changeTexCoordsAcceser->setFromDVec3(i, texCoords[i]);
-
-
-            
         }
     }
 

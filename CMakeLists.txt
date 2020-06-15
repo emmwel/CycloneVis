@@ -16,6 +16,7 @@ set(HEADER_FILES
     include/inviwo/cyclonevis/processors/texturedmeshrenderer.h
     include/inviwo/cyclonevis/processors/volumeslicequad.h
     include/inviwo/cyclonevis/util/batchvolumesampler.h
+	include/inviwo/cyclonevis/util/coordinatetransformations.h
 )
 ivw_group("Header Files" ${HEADER_FILES})
 

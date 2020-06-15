@@ -676,18 +676,14 @@ public:
         // Go through queue until empty
         while(!queue.empty()) {
             vertex cur = queue.front();
-            //std::cout << cur << std::endl;
             queue.pop_front();
             
-            //std::cout  << "haha: " << search_condition_vertex(VDL_[cur]) << std::endl;
             
             if (search_condition_vertex(VDL_[cur])) {
                 search_set.insert(cur);
-                //std::cout  << "haha: " << search_condition_vertex(VDL_[cur]) << std::endl;
             }
             
             for (vertex_iterator p = out_neighbors_begin(cur); p != out_neighbors_end(cur); ++p) {
-                //std::cout << "gaa" << std::endl;
                 if (!visited[*p]) {
                     visited[*p] = true;
                     queue.push_back(*p);
@@ -700,7 +696,6 @@ public:
     tGraph BFS_vertex() {
         // visited
         std::vector<bool> visited(num_vertices(), false);
-        //std::cout << visited[1] << std::endl;
         
         // set used to save vertices which fulfill the search condition
         vertex_set search_set;
@@ -727,14 +722,14 @@ public:
          // Go through queue until empty
          while(!queue.empty()) {
              vertex cur = queue.front();
-//             std::cout << cur << std::endl;
+
              queue.pop_front();
 
              // go through all outgoing edges
              for (vertex_iterator p = out_neighbors_begin(cur); p != out_neighbors_end(cur); ++p) {
 
                  edge e{cur, *p};
-//                 std::cout << "Edge: [" << e.first << ", " << e.second << "]" << std::endl;
+
                  // if edge fulfills condition, add to set
                  if (search_condition_edge(EDL_.at(e))) {
                      search_set.insert(e);
@@ -753,7 +748,6 @@ public:
     tGraph BFS_edge() {
         // visited
         std::vector<bool> visited(num_vertices(), false);
-        //std::cout << visited[1] << std::endl;
         
         // set used to save edges which fulfill the search condition
         edge_set search_set{};
@@ -763,8 +757,7 @@ public:
                 BFS_edge_util(i, visited, search_set);
             }
         }
-//        std::cout << search_set.size() << std::endl;
-//
+
         return tGraph(search_set, VDL_, EDL_);
     }
     
