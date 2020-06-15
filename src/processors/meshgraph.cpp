@@ -30,6 +30,7 @@
 #include <inviwo/cyclonevis/processors/meshgraph.h>
 #include <modules/base/algorithm/dataminmax.h>
 #include <inviwo/core/network/networklock.h>
+#include <inviwo/cyclonevis/util/coordinatetransformations.h>
 
 namespace inviwo {
 
@@ -232,6 +233,75 @@ void MeshGraph::process() {
     // Create graph if not created
     if (!graphCreated_)
         createGraph();
+
+
+	// ------ TESTNG COORD TRANSFORMS ------ //
+
+	/* CYLINDER TRANSFORMS */
+	{
+		// Cylinder to cartesian -- Works!
+
+		//// Test 1
+		//vec3 cyl = vec3(4, (2 * M_PI) / 3, -2);
+		//vec3 expected_res = vec3(-2, 2 * sqrt(3), -2);
+		//vec3 res = coordTransform::cylindricalToCartesian(cyl);
+
+		//// Test2
+		//vec3 cyl = vec3(5, M_PI / 6, 4);
+		//vec3 expected_res = vec3(5 * sqrt(3) / 2, 5.0/2, 4);
+		//vec3 res = coordTransform::cylindricalToCartesian(cyl);
+
+		//// Used for debugging bc. assert what
+		//std::cout << cyl << std::endl;
+		//std::cout << expected_res << std::endl;
+		//std::cout << res << std::endl;
+	}
+	{
+		// Cartesian to cylinder -- Works!
+
+		//// Test 1
+		//vec3 cart = vec3(1, -3, 5);
+		//vec3 res_expected = vec3(sqrt(10), 5.03, 5); // or theta = -1.249..
+		//vec3 res = coordTransform::cartesianToCylindrical(cart);
+
+		//// Test 2
+		//vec3 cart = vec3(-8, 8, -7);
+		//vec3 res_expected = vec3(8*sqrt(2), (3 * M_PI)/ 4, -7);
+		//vec3 res = coordTransform::cartesianToCylindrical(cart);
+
+		//std::cout << cart << std::endl;
+		//std::cout << res_expected << std::endl;
+		//std::cout << res << std::endl;
+	}
+
+	/* SPHERE TRANSFORMS */
+	{
+		// Spherical to cartesian -- Works!
+
+		//// Test 1
+		//vec3 spher = vec3(8, M_PI / 3, M_PI / 6);
+		//vec3 res_expected = vec3(2, 2 * sqrt(3), 4 * sqrt(3));
+		//vec3 res = coordTransform::sphericalToCartesian(spher);
+
+		//// Test 2
+		//vec3 spher = vec3(2, (- 5 * M_PI) / 6, M_PI / 6);
+		//vec3 res_expected = vec3(- sqrt(3) / 2, -0.5, sqrt(3));
+		//vec3 res = coordTransform::sphericalToCartesian(spher);
+
+		//std::cout << spher << std::endl;
+		//std::cout << res_expected << std::endl;
+		//std::cout << res << std::endl;
+	}
+	{
+		// Cartesian to spherical -- ???
+
+		// Test 1
+
+		// Test 2
+
+	}
+	
+	// ------------------------------------ //
     
     // Filtered graph
     NGraph::tGraph<int, vec3, double> graphFiltered;
