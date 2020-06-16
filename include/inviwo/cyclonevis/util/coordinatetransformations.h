@@ -18,6 +18,13 @@ namespace coordTransform {
 	// Cylindrical: (r, theta, z)
 	// Spherical: (rho, theta, phi)
 
+	float rangeMapper(float inputValue, vec2 inRange, vec2 outRange) {
+		float slope = (outRange[1] - outRange[0]) / (inRange[1] - inRange[0]);
+		return (outRange[0] + slope * (inputValue - inRange[0]));
+	}
+
+	/*--------------- TRANSFORMATIONS ---------------*/
+
 	vec2 cartesianToPolar(vec2 coords) {
 		double r = sqrt(coords.x * coords.x + coords.y * coords.y);
 		double phi = atan2(coords.y, coords.x);
@@ -105,6 +112,17 @@ namespace coordTransform {
 		return vec3(r, theta, z);
 	}
 
+	/*--------------- LAT-LONG ---------------*/
+
+	vec2 cartesianToLatLong(vec2 coords, vec2 dimX, vec2 dimY) {
+		// Here it is assumed that the cartesian system is in the middle point of the world
+
+		float latitude = rangeMapper(coords.y, dimY, vec2(-90, 90));
+		float longitude = rangeMapper(coords.x, dimX, vec2(-180, 180));
+
+		return vec2(latitude, longitude);
+	}
+
 	/*--------------- DISTANCE MEASURES ---------------*/
 
 	// function assumes both points are in spherical coordinatesystem
@@ -112,8 +130,11 @@ namespace coordTransform {
 		float distance = sqrt(
 			(p1[0] * p1[0]) + 
 			(p2[0] * p2[0]) - 
-			(2 * p1[0] * p2[0] * (sin(p1[1]) * sin(p2[1]) * cos(p1[2] - p2[2]))) + 
-			(cos(p1[1])*cos(p2[1]))
+			(2 * p1[0] * p2[0] * (
+					(sin(p1[1]) * sin(p2[1]) * cos(p1[2] - p2[2])) +
+					(cos(p1[1]) * cos(p2[1]))
+				)
+			)
 		);
 		return distance;
 	}

@@ -57,11 +57,12 @@ MeshGraph::MeshGraph()
     , filterYMax_("filterYMax", "Filter Y Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
     , filterZMax_("filterZMax", "Filter Z Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
     , filterEdgeLength_("filterEdgeLength", "Filter Edge Length", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+	, basis_("Basis", "Basis and offset")
     , graphCreated_(false) {
     
     addPort(meshInport_);
     addPort(outport_);
-    addProperties(filterVertices_, filterXMin_, filterXMax_, filterYMin_, filterYMax_, filterZMin_, filterZMax_, filterEdges_, filterEdgeLength_);
+    addProperties(filterVertices_, filterXMin_, filterXMax_, filterYMin_, filterYMax_, filterZMin_, filterZMax_, filterEdges_, filterEdgeLength_, basis_);
     
     // Serialize as filtering positions depend on mesh input
     filterXMin_.setSerializationMode(PropertySerializationMode::All);
@@ -195,18 +196,35 @@ void MeshGraph::createGraph() {
     
     // Create graph by inserting edges
     for (unsigned long i = 0; i < edges.size(); ++i) {
+		// Get edge
         std::pair<int, int> edge = edges[i];
         
-        // Calculate edge length
-        double edgeLength = glm::distance(positions[edge.second], positions[edge.first]);
+		/* SPHERICAL VERSION */
+
+		// Transform edge points to spherical coordinates
+		vec3 pos1Spherical = coordTransform::cartesianToSpherical(positions[edge.first]);
+		vec3 pos2Spherical = coordTransform::cartesianToSpherical(positions[edge.second]);
+
+		// Set min and max length
+		double edgeLengthSpherical = coordTransform::distanceSphericalCoords(pos1Spherical, pos2Spherical);
+
+		minLength = std::min(edgeLengthSpherical, minLength);
+		maxLength = std::max(edgeLengthSpherical, maxLength);
+
+		// Set the positions in cartesian, but the edge length is in spherical
+		graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthSpherical);
+
+
+        //// Calculate edge length
+        //double edgeLength = glm::distance(positions[edge.second], positions[edge.first]);
        
-        // Set min and max length
-        minLength = std::min(edgeLength, minLength);
-        maxLength = std::max(edgeLength, maxLength);
-        
-        // Insert edge and set vertex data as vertex position
-        // and set edge data as edge length
-        graph_.insert_edge({edge.first, positions[edge.first]}, {edge.second, positions[edge.second]}, edgeLength);
+        //// Set min and max length
+        //minLength = std::min(edgeLength, minLength);
+        //maxLength = std::max(edgeLength, maxLength);
+        //
+        //// Insert edge and set vertex data as vertex position
+        //// and set edge data as edge length
+        //graph_.insert_edge({edge.first, positions[edge.first]}, {edge.second, positions[edge.second]}, edgeLength);
     }
     // Set property for filtering edge length
     filterEdgeLength_.set({minLength, maxLength}, {minLength, maxLength}, increment_, minSep_);

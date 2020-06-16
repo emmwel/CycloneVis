@@ -40,6 +40,7 @@
 #include <inviwo/core/datastructures/geometry/mesh.h>
 #include <inviwo/core/datastructures/buffer/buffer.h>
 #include <inviwo/cyclonevis/ngraph/ngraph.hpp>
+#include <modules/base/properties/basisproperty.h>
 
 namespace inviwo {
 
@@ -93,6 +94,8 @@ private:
     FloatMinMaxProperty filterZMax_;
     
     FloatMinMaxProperty filterEdgeLength_;
+
+	BasisProperty basis_;
     
     double increment_ = 0.1;
     double minSep_ = 0.01;
