@@ -71,10 +71,11 @@ MeshGraph::MeshGraph()
     filterYMax_.setSerializationMode(PropertySerializationMode::All);
     filterZMax_.setSerializationMode(PropertySerializationMode::All);
     filterEdgeLength_.setSerializationMode(PropertySerializationMode::All);
-        
+
     meshInport_.onChange([this]() {
         meshInportOnChange();
-    });     
+    }); 
+
 }
 
 void MeshGraph::meshInportOnChange() {
@@ -225,16 +226,8 @@ std::vector<T> convertBuffer(std::shared_ptr<BufferBase> buffer) {
     });
 }
 
-void MeshGraph::process() {
-    // If there is no input yet
-    if (!meshInport_.isReady())
-        return;
-    
-    // Create graph if not created
-    if (!graphCreated_)
-        createGraph();
-
-
+// TODO: actual tests instead of strange debugging setup?
+void testsCoordinateTransformations() {
 	// ------ TESTNG COORD TRANSFORMS ------ //
 
 	/* CYLINDER TRANSFORMS */
@@ -293,15 +286,30 @@ void MeshGraph::process() {
 		//std::cout << res << std::endl;
 	}
 	{
-		// Cartesian to spherical -- ???
+		// Cartesian to spherical -- Works!
 
-		// Test 1
+		//// Test 1
+		//vec3 cart = vec3(-1, 1, sqrt(6));
+		//vec3 res_expected = vec3(2 * sqrt(2), (3 * M_PI) / 4, M_PI / 6);
+		//vec3 res = coordTransform::cartesianToSpherical(cart);
 
-		// Test 2
+		//std::cout << cart << std::endl;
+		//std::cout << res_expected << std::endl;
+		//std::cout << res << std::endl;
 
 	}
-	
+
 	// ------------------------------------ //
+}
+
+void MeshGraph::process() {
+    // If there is no input yet
+    if (!meshInport_.isReady())
+        return;
+    
+    // Create graph if not created
+    if (!graphCreated_)
+        createGraph();
     
     // Filtered graph
     NGraph::tGraph<int, vec3, double> graphFiltered;
