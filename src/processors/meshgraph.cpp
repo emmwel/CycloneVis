@@ -170,6 +170,9 @@ void MeshGraph::createGraph() {
     
     // Get input mesh to get data for the graph
     std::shared_ptr<Mesh> mesh(meshInport_.getData()->clone());
+
+	mat4 haha = mesh->getModelMatrix();
+	mat3 hmsa = mesh->getBasis();
     
     // Buffers, only works when there is one position buffer and one color buffer
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));

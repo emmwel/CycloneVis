@@ -19,21 +19,21 @@ namespace coordTransform {
 	// Cylindrical: (r, theta, z)
 	// Spherical: (rho, theta, phi)
 
-	float rangeMapper(float inputValue, vec2 inRange, vec2 outRange) {
+	inline float rangeMapper(float inputValue, vec2 inRange, vec2 outRange) {
 		float slope = (outRange[1] - outRange[0]) / (inRange[1] - inRange[0]);
 		return (outRange[0] + slope * (inputValue - inRange[0]));
 	}
 
 	/*--------------- TRANSFORMATIONS ---------------*/
 
-	vec2 cartesianToPolar(vec2 coords) {
+	inline vec2 cartesianToPolar(vec2 coords) {
 		double r = sqrt(coords.x * coords.x + coords.y * coords.y);
 		double phi = atan2(coords.y, coords.x);
 
 		return vec2(r, phi);
 	}
 
-	vec2 polarToCartesian(vec2 coords) {
+	inline vec2 polarToCartesian(vec2 coords) {
 		// r * cos(phi)
 		double x = coords[0] * cos(coords[1]);
 
@@ -43,7 +43,7 @@ namespace coordTransform {
 		return vec2(x, y);
 	}
 
-	vec3 cartesianToCylindrical(vec3 coords) {
+	inline vec3 cartesianToCylindrical(vec3 coords) {
 		float r = sqrt(coords.x * coords.x + coords.y * coords.y);
 
 		// use atan2 so function takes quadrant into account
@@ -53,7 +53,7 @@ namespace coordTransform {
 		return vec3(r, theta, z);
 	}
 
-	vec3 cylindricalToCartesian(vec3 coords) {
+	inline vec3 cylindricalToCartesian(vec3 coords) {
 		// r * cos(theta)
 		float x = coords[0] * cos(coords[1]);
 
@@ -65,7 +65,7 @@ namespace coordTransform {
 		return vec3(x, y, z);
 	}
 
-	vec3 cylindricalToSpherical(vec3 coords) {
+	inline vec3 cylindricalToSpherical(vec3 coords) {
 		// sqrt(r^2 + z^2)
 		double rho = sqrt(coords[0] * coords[0] + coords[2] * coords[2]);
 
@@ -78,7 +78,7 @@ namespace coordTransform {
 		return vec3(rho, theta, phi);
 	}
 
-	vec3 cartesianToSpherical(vec3 coords) {
+	inline vec3 cartesianToSpherical(vec3 coords) {
 
 		float rho = sqrt(coords.x * coords.x + coords.y * coords.y + coords.z * coords.z);
 		float theta = atan2(coords.y, coords.x);
@@ -87,7 +87,7 @@ namespace coordTransform {
 		return vec3(rho, theta, phi);
 	}
 
-	vec3 sphericalToCartesian(vec3 coords) {
+	inline vec3 sphericalToCartesian(vec3 coords) {
 		// rho * sin(phi) * cos(theta)
 		float x = coords[0] * sin(coords[2]) * cos(coords[1]);
 
@@ -100,7 +100,7 @@ namespace coordTransform {
 		return vec3(x, y, z);
 	}
 
-	vec3 sphericalToCylindrical(vec3 coords) {
+	inline vec3 sphericalToCylindrical(vec3 coords) {
 		// r * sin(theta)
 		double r = coords[0] * sin(coords[1]);
 
@@ -115,7 +115,7 @@ namespace coordTransform {
 
 	/*--------------- LAT-LONG ---------------*/
 
-	vec2 cartesianToLatLong(vec2 coords, vec2 dimX, vec2 dimY) {
+	inline vec2 cartesianToLatLong(vec2 coords, vec2 dimX, vec2 dimY) {
 		// Here it is assumed that the cartesian system is in the middle point of the world
 		// and that coords is in the world coordinate system
 
@@ -125,10 +125,29 @@ namespace coordTransform {
 		return vec2(latitude, longitude);
 	}
 
+	inline vec3 mapToLatLongAlt(vec3 coords, vec2 dimX, vec2 dimY, float sphereRad) {
+		// Here it is assumed that the cartesian system is in the middle point of the world
+		// and that coords is in the world coordinate system
+
+		float latitude = rangeMapper(coords.y, dimY, vec2(-90, 90));
+		float longitude = rangeMapper(coords.x, dimX, vec2(-180, 180));
+		float altitude = sphereRad + coords.z;
+
+		return vec3(latitude, longitude, sphereRad);
+	}
+
+	inline vec3 latLongAltToSpherical(vec3 coords) {
+		float rho = coords[2];
+		float theta = TO_RAD * (180 - coords[1]);
+		float phi = TO_RAD * (90 - coords[0]);
+
+		return vec3(rho, theta, phi);
+	}
+
 	/*--------------- DISTANCE MEASURES ---------------*/
 
 	// function assumes both points are in spherical coordinatesystem
-	float distanceSphericalCoords(vec3 p1, vec3 p2) {
+	inline float distanceSphericalCoords(vec3 p1, vec3 p2) {
 		float distance = sqrt(
 			(p1[0] * p1[0]) + 
 			(p2[0] * p2[0]) - 
@@ -142,7 +161,7 @@ namespace coordTransform {
 	}
 
 	// great circle distance using haversine formula
-	float distanceHaversine(vec2 p1, vec2 p2) {
+	inline float distanceHaversine(vec2 p1, vec2 p2) {
 		// Turn given lat-long from degrees to radians
 		vec2 p1Rad = TO_RAD * p1;
 		vec2 p2Rad = TO_RAD * p2;

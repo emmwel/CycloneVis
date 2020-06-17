@@ -28,6 +28,7 @@
  *********************************************************************************/
 
 #include <inviwo/cyclonevis/processors/meshwrappertosphere.h>
+#include <inviwo/cyclonevis/util/coordinatetransformations.h>
 
 namespace inviwo {
 
@@ -35,7 +36,7 @@ namespace inviwo {
 const ProcessorInfo MeshWrapperToSphere::processorInfo_{
     "org.inviwo.MeshWrapperToSphere",      // Class identifier
     "Mesh Wrapper To Sphere",                // Display name
-    "Undefined",              // Category
+    "CycloneVis",              // Category
     CodeState::Experimental,  // Code state
     Tags::None,               // Tags
 };
@@ -44,14 +45,64 @@ const ProcessorInfo MeshWrapperToSphere::getProcessorInfo() const { return proce
 MeshWrapperToSphere::MeshWrapperToSphere()
     : Processor()
     , outport_("outport")
-    , position_("position", "Position", vec3(0.0f), vec3(-100.0f), vec3(100.0f)) {
+	, meshInport_("meshInport")
+	, sphereRadius_("sphereRadius", "Sphere Radius", 5.f, 1.f, 1000.f, 1.f){
 
+	addPort(meshInport_);
     addPort(outport_);
-    addProperty(position_);
+
+	addProperty(sphereRadius_);
 }
 
 void MeshWrapperToSphere::process() {
-    // outport_.setData(myImage);
+    // Check inport is ready
+	if (!meshInport_.isReady() )
+		return;
+
+	// Load mesh data
+	std::shared_ptr<Mesh> mesh(meshInport_.getData()->clone());
+
+	// Load position buffer, only works when there is one position buffer
+	auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
+	auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
+
+	//auto texBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::TexcoordAttrib));
+	//auto texCoords = texBuffer->getEditableRAMRepresentation()->getDataContainer();
+
+	// Get index buffer
+	auto indBuffer = mesh->getIndices(0);
+	auto indices = indBuffer->getEditableRAMRepresentation()->getDataContainer();
+
+	mat3 basis = mesh->getBasis();
+	vec3 offset = mesh->getOffset();
+	vec2 dimX = vec2(-basis[0][0]/2, basis[0][0]/2);
+	vec2 dimY = vec2(-basis[1][1]/2, basis[1][1]/2);
+	mat4 haha = mesh->getModelMatrix();
+	std::vector<vec3> newPositions(positions.size());
+
+	for (unsigned long i = 0; i < positions.size(); i++) {
+		vec3 latLongAlt = coordTransform::mapToLatLongAlt(positions[i], dimX, dimY, sphereRadius_.get());
+		vec3 cartesian = coordTransform::sphericalToCartesian(coordTransform::latLongAltToSpherical(latLongAlt));
+		newPositions[i] = cartesian;
+
+		std::cout << positions[i] << std::endl;
+		std::cout << latLongAlt << std::endl;
+	}
+
+	auto outputPosBuffer = util::makeBuffer(std::move(newPositions));
+	//auto outputTexBuffer = util::makeBuffer(std::move(texCoords));
+	auto outputIndexBuffer = util::makeIndexBuffer(std::move(indices));
+
+	// Create mesh from buffers
+	DrawType hm = mesh->getDefaultMeshInfo().dt;
+
+
+	inviwo::Mesh* result = new Mesh(DrawType::Lines, ConnectivityType::None);
+	result->addBuffer(BufferType::PositionAttrib, outputPosBuffer);
+	//result->addBuffer(BufferType::TexcoordAttrib, outputTexBuffer);
+	result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), outputIndexBuffer);
+
+	outport_.setData(result);
 }
 
 }  // namespace inviwo

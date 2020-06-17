@@ -32,7 +32,7 @@
 #include <inviwo/cyclonevis/cyclonevismoduledefine.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/ordinalproperty.h>
-#include <inviwo/core/ports/imageport.h>
+#include <inviwo/core/ports/meshport.h>
 
 namespace inviwo {
 
@@ -61,8 +61,9 @@ public:
     static const ProcessorInfo processorInfo_;
 
 private:
-    ImageOutport outport_;
-    FloatVec3Property position_;
+	MeshInport meshInport_;
+    MeshOutport outport_;
+	FloatProperty sphereRadius_;
 };
 
 }  // namespace inviwo
