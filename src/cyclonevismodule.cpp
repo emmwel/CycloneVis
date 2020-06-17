@@ -32,6 +32,7 @@
 #include <inviwo/cyclonevis/processors/floodfillvolume.h>
 #include <inviwo/cyclonevis/processors/meshgraph.h>
 #include <inviwo/cyclonevis/processors/meshtexturebuffermapper.h>
+#include <inviwo/cyclonevis/processors/meshwrappertosphere.h>
 #include <inviwo/cyclonevis/processors/texturedmeshrenderer.h>
 #include <inviwo/cyclonevis/processors/volumeslicequad.h>
 
@@ -55,6 +56,7 @@ cyclonevisModule::cyclonevisModule(InviwoApplication* app) : InviwoModule(app, "
 	registerProcessor<MeshTextureBufferMapper>();
 	registerProcessor<CycloneContourLines>();
 	registerProcessor<MeshGraph>();
+    registerProcessor<MeshWrapperToSphere>();
     // registerProcessor<cyclonevisProcessor>();
 
     // Properties

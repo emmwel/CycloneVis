@@ -13,10 +13,11 @@ set(HEADER_FILES
     include/inviwo/cyclonevis/processors/floodfillvolume.h
     include/inviwo/cyclonevis/processors/meshgraph.h
     include/inviwo/cyclonevis/processors/meshtexturebuffermapper.h
+    include/inviwo/cyclonevis/processors/meshwrappertosphere.h
     include/inviwo/cyclonevis/processors/texturedmeshrenderer.h
     include/inviwo/cyclonevis/processors/volumeslicequad.h
     include/inviwo/cyclonevis/util/batchvolumesampler.h
-	include/inviwo/cyclonevis/util/coordinatetransformations.h
+    include/inviwo/cyclonevis/util/coordinatetransformations.h
 )
 ivw_group("Header Files" ${HEADER_FILES})
 
@@ -28,6 +29,7 @@ set(SOURCE_FILES
     src/processors/floodfillvolume.cpp
     src/processors/meshgraph.cpp
     src/processors/meshtexturebuffermapper.cpp
+    src/processors/meshwrappertosphere.cpp
     src/processors/texturedmeshrenderer.cpp
     src/processors/volumeslicequad.cpp
     src/util/batchvolumesampler.cp

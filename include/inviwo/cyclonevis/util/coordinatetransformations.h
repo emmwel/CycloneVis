@@ -9,6 +9,7 @@ namespace coordTransform {
 
 	// CONSTANTS
 	const float EARTH_RADIUS_M = 6371000.0;
+	const float EARTH_RADIUS_KM = 6731.0;
 	const float TO_RAD = M_PI / 180;
 	const float TO_DEG = 180 / M_PI;
 
@@ -116,6 +117,7 @@ namespace coordTransform {
 
 	vec2 cartesianToLatLong(vec2 coords, vec2 dimX, vec2 dimY) {
 		// Here it is assumed that the cartesian system is in the middle point of the world
+		// and that coords is in the world coordinate system
 
 		float latitude = rangeMapper(coords.y, dimY, vec2(-90, 90));
 		float longitude = rangeMapper(coords.x, dimX, vec2(-180, 180));
@@ -137,5 +139,25 @@ namespace coordTransform {
 			)
 		);
 		return distance;
+	}
+
+	// great circle distance using haversine formula
+	float distanceHaversine(vec2 p1, vec2 p2) {
+		// Turn given lat-long from degrees to radians
+		vec2 p1Rad = TO_RAD * p1;
+		vec2 p2Rad = TO_RAD * p2;
+
+		float difLat = p2[0] - p1[0];
+		float difLong = p2[1] - p1[1];
+
+		float haversineCentralAngle = sin(difLat / 2) * sin(difLat / 2) +
+			(cos(p1[0])* cos(p2[0]) * sin(difLong/2) * sin(difLong/2));
+
+		// Using atan2 instead of asin gives the quadrant of the angle 
+		float centralAngle = 2 * atan2(sqrt(haversineCentralAngle), sqrt(1 - haversineCentralAngle));
+
+		// distance = radius * centralangle
+		return EARTH_RADIUS_KM * centralAngle;
+
 	}
 }

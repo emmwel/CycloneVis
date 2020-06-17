@@ -202,18 +202,34 @@ void MeshGraph::createGraph() {
 		/* SPHERICAL VERSION */
 
 		// Transform edge points to spherical coordinates
-		vec3 pos1Spherical = coordTransform::cartesianToSpherical(positions[edge.first]);
-		vec3 pos2Spherical = coordTransform::cartesianToSpherical(positions[edge.second]);
+		//vec3 pos1Spherical = coordTransform::cartesianToSpherical(positions[edge.first]);
+		//vec3 pos2Spherical = coordTransform::cartesianToSpherical(positions[edge.second]);
 
-		// Set min and max length
-		double edgeLengthSpherical = coordTransform::distanceSphericalCoords(pos1Spherical, pos2Spherical);
+		//// Calculate edge length
+		//double edgeLengthSpherical = coordTransform::distanceSphericalCoords(pos1Spherical, pos2Spherical);
 
-		minLength = std::min(edgeLengthSpherical, minLength);
-		maxLength = std::max(edgeLengthSpherical, maxLength);
+		//// Set min and max length
+		//minLength = std::min(edgeLengthSpherical, minLength);
+		//maxLength = std::max(edgeLengthSpherical, maxLength);
 
-		// Set the positions in cartesian, but the edge length is in spherical
-		graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthSpherical);
+		//// Set the positions in cartesian, but the edge length is in spherical
+		//graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthSpherical);
 
+		/* GREAT CIRCLE DISTANCE VERSION */
+
+		// Transform edge points to latitude longitude
+		vec2 dimX = vec2(basis_.offset_.get().x, basis_.offset_.get().x + basis_.a_.get().x);
+		vec2 dimY = vec2(basis_.offset_.get().y, basis_.offset_.get().y + basis_.b_.get().y);
+		vec2 pos1LatLong = coordTransform::cartesianToLatLong(vec2(positions[edge.first][0], positions[edge.first][1]), dimX, dimY);
+		vec2 pos2LatLong = coordTransform::cartesianToLatLong(vec2(positions[edge.second][0], positions[edge.second][1]), dimX, dimY);
+
+		// Calculate edge length
+		double edgeLengthGreatCircle = coordTransform::distanceHaversine(pos1LatLong, pos2LatLong);
+
+		minLength = std::min(edgeLengthGreatCircle, minLength);
+		maxLength = std::max(edgeLengthGreatCircle, maxLength);
+
+		graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthGreatCircle);
 
         //// Calculate edge length
         //double edgeLength = glm::distance(positions[edge.second], positions[edge.first]);
@@ -245,7 +261,7 @@ std::vector<T> convertBuffer(std::shared_ptr<BufferBase> buffer) {
 }
 
 // TODO: actual tests instead of strange debugging setup?
-void testsCoordinateTransformations() {
+void MeshGraph::testsCoordinateTransformations() {
 	// ------ TESTNG COORD TRANSFORMS ------ //
 
 	/* CYLINDER TRANSFORMS */
@@ -317,6 +333,69 @@ void testsCoordinateTransformations() {
 
 	}
 
+	/* LATITUDE-LONGITUDE */
+	{
+		// Cartesian to latitude longitude
+
+		// following may be simpler using extent instead of basis...
+		vec2 dimX = vec2(basis_.offset_.get().x, basis_.offset_.get().x + basis_.a_.get().x);
+		vec2 dimY = vec2(basis_.offset_.get().y, basis_.offset_.get().y + basis_.b_.get().y);
+
+		//// Test 1
+		//vec2 cart = vec2(0, 0);
+		//vec2 res_exp = vec2(0, 0);
+		//vec2 res = coordTransform::cartesianToLatLong(cart, dimX, dimY);
+
+		//std::cout << cart << std::endl;
+		//std::cout << res_exp << std::endl;
+		//std::cout << res << std::endl;
+
+		//// Test 2
+		//vec2 cart = vec2(16, 0);
+		//vec2 res_exp = vec2(0, 180); // (lat, long) --> x is long, y is lat.
+		//vec2 res = coordTransform::cartesianToLatLong(cart, dimX, dimY);
+
+		//std::cout << cart << std::endl;
+		//std::cout << res_exp << std::endl;
+		//std::cout << res << std::endl;
+
+		//// Test 3
+		//vec2 cart = vec2(16, 8);
+		//vec2 res_exp = vec2(90, 180); // (lat, long) --> x is long, y is lat.
+		//vec2 res = coordTransform::cartesianToLatLong(cart, dimX, dimY);
+
+		//std::cout << cart << std::endl;
+		//std::cout << res_exp << std::endl;
+		//std::cout << res << std::endl;
+
+		//// Test 4
+		//vec2 cart = vec2(-16, -8);
+		//vec2 res_exp = vec2(-90, -180); // (lat, long) --> x is long, y is lat.
+		//vec2 res = coordTransform::cartesianToLatLong(cart, dimX, dimY);
+
+		//std::cout << cart << std::endl;
+		//std::cout << res_exp << std::endl;
+		//std::cout << res << std::endl;
+
+		//// Test 5
+		//vec2 cart = vec2(8, 4);
+		//vec2 res_exp = vec2(45, 90); // (lat, long) --> x is long, y is lat.
+		//vec2 res = coordTransform::cartesianToLatLong(cart, dimX, dimY);
+
+		//std::cout << cart << std::endl;
+		//std::cout << res_exp << std::endl;
+		//std::cout << res << std::endl;
+
+		// Test 6
+		//vec2 cart = vec2(-8, -4);
+		//vec2 res_exp = vec2(-45, -90); // (lat, long) --> x is long, y is lat.
+		//vec2 res = coordTransform::cartesianToLatLong(cart, dimX, dimY);
+
+		//std::cout << cart << std::endl;
+		//std::cout << res_exp << std::endl;
+		//std::cout << res << std::endl;
+	}
+
 	// ------------------------------------ //
 }
 
@@ -328,7 +407,9 @@ void MeshGraph::process() {
     // Create graph if not created
     if (!graphCreated_)
         createGraph();
-    
+
+	testsCoordinateTransformations();
+
     // Filtered graph
     NGraph::tGraph<int, vec3, double> graphFiltered;
     
