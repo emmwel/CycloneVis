@@ -64,6 +64,8 @@ private:
 	MeshInport meshInport_;
     MeshOutport outport_;
 	FloatProperty sphereRadius_;
+
+	BasisProperty basis_;
 };
 
 }  // namespace inviwo

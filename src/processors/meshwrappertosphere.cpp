@@ -46,12 +46,13 @@ MeshWrapperToSphere::MeshWrapperToSphere()
     : Processor()
     , outport_("outport")
 	, meshInport_("meshInport")
-	, sphereRadius_("sphereRadius", "Sphere Radius", 5.f, 1.f, 1000.f, 1.f){
+	, sphereRadius_("sphereRadius", "Sphere Radius", 5.f, 1.f, 1000.f, 1.f)
+	, basis_("Basis", "Basis and offset") {
 
 	addPort(meshInport_);
     addPort(outport_);
 
-	addProperty(sphereRadius_);
+	addProperties(sphereRadius_, basis_);
 }
 
 void MeshWrapperToSphere::process() {
@@ -73,15 +74,16 @@ void MeshWrapperToSphere::process() {
 	auto indBuffer = mesh->getIndices(0);
 	auto indices = indBuffer->getEditableRAMRepresentation()->getDataContainer();
 
-	mat3 basis = mesh->getBasis();
-	vec3 offset = mesh->getOffset();
-	vec2 dimX = vec2(-basis[0][0]/2, basis[0][0]/2);
-	vec2 dimY = vec2(-basis[1][1]/2, basis[1][1]/2);
-	mat4 haha = mesh->getModelMatrix();
+	// Get basis of volume to get the dimension mesh is in, since its' basis is not correct...
+	mat3 basis = mat3(basis_.a_.get(), basis_.b_.get(), basis_.c_.get());
+	vec2 dimX = vec2(-basis[0].x/2, basis[0].x/2);
+	vec2 dimY = vec2(-basis[1].y/2, basis[1].y/2);
+	vec2 dimZ = vec2(-basis[2].z/2, basis[2].z/2);
+
 	std::vector<vec3> newPositions(positions.size());
 
 	for (unsigned long i = 0; i < positions.size(); i++) {
-		vec3 latLongAlt = coordTransform::mapToLatLongAlt(positions[i], dimX, dimY, sphereRadius_.get());
+		vec3 latLongAlt = coordTransform::mapToLatLongAlt(positions[i], dimX, dimY, dimZ, sphereRadius_.get());
 		vec3 cartesian = coordTransform::sphericalToCartesian(coordTransform::latLongAltToSpherical(latLongAlt));
 		newPositions[i] = cartesian;
 

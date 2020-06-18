@@ -56,13 +56,18 @@ MeshGraph::MeshGraph()
     , filterXMax_("filterXMax", "Filter X Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
     , filterYMax_("filterYMax", "Filter Y Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
     , filterZMax_("filterZMax", "Filter Z Max Range", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
+	, distanceMethod_("distanceMethod", "Distance Method",
+		{
+		  {"euclidean", "Euclidean", DistanceMethod::Euclidean},
+		  {"greatCircleHaversine", "Great Circle Distance - Haversine", DistanceMethod::GreatCircleHaversine}
+		}, 1)
     , filterEdgeLength_("filterEdgeLength", "Filter Edge Length", 0.0f, 1.0f, -1.0e1f, 1.0e1f)
 	, basis_("Basis", "Basis and offset")
     , graphCreated_(false) {
     
     addPort(meshInport_);
     addPort(outport_);
-    addProperties(filterVertices_, filterXMin_, filterXMax_, filterYMin_, filterYMax_, filterZMin_, filterZMax_, filterEdges_, filterEdgeLength_, basis_);
+    addProperties(filterVertices_, filterXMin_, filterXMax_, filterYMin_, filterYMax_, filterZMin_, filterZMax_, filterEdges_, distanceMethod_, filterEdgeLength_, basis_);
     
     // Serialize as filtering positions depend on mesh input
     filterXMin_.setSerializationMode(PropertySerializationMode::All);
@@ -75,7 +80,7 @@ MeshGraph::MeshGraph()
 
     meshInport_.onChange([this]() {
         meshInportOnChange();
-    }); 
+    });
 
 }
 
@@ -201,50 +206,49 @@ void MeshGraph::createGraph() {
     for (unsigned long i = 0; i < edges.size(); ++i) {
 		// Get edge
         std::pair<int, int> edge = edges[i];
-        
-		/* SPHERICAL VERSION */
 
-		// Transform edge points to spherical coordinates
-		//vec3 pos1Spherical = coordTransform::cartesianToSpherical(positions[edge.first]);
-		//vec3 pos2Spherical = coordTransform::cartesianToSpherical(positions[edge.second]);
+		switch (distanceMethod_) {
+			case DistanceMethod::Euclidean: {
+				// Calculate edge length
+				double edgeLength = glm::distance(positions[edge.second], positions[edge.first]);
 
-		//// Calculate edge length
-		//double edgeLengthSpherical = coordTransform::distanceSphericalCoords(pos1Spherical, pos2Spherical);
+				// Set min and max length
+				minLength = std::min(edgeLength, minLength);
+				maxLength = std::max(edgeLength, maxLength);
 
-		//// Set min and max length
-		//minLength = std::min(edgeLengthSpherical, minLength);
-		//maxLength = std::max(edgeLengthSpherical, maxLength);
+				// Insert edge and set vertex data as vertex position
+				// and set edge data as edge length
+				graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLength);
 
-		//// Set the positions in cartesian, but the edge length is in spherical
-		//graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthSpherical);
+				break;
+			}
 
-		/* GREAT CIRCLE DISTANCE VERSION */
+			case DistanceMethod::GreatCircleHaversine: {
+				// Transform edge points to latitude longitude
+				vec2 dimX = vec2(basis_.offset_.get().x, basis_.offset_.get().x + basis_.a_.get().x);
+				vec2 dimY = vec2(basis_.offset_.get().y, basis_.offset_.get().y + basis_.b_.get().y);
+				vec2 pos1LatLong = coordTransform::cartesianToLatLong(vec2(positions[edge.first][0], positions[edge.first][1]), dimX, dimY);
+				vec2 pos2LatLong = coordTransform::cartesianToLatLong(vec2(positions[edge.second][0], positions[edge.second][1]), dimX, dimY);
 
-		// Transform edge points to latitude longitude
-		vec2 dimX = vec2(basis_.offset_.get().x, basis_.offset_.get().x + basis_.a_.get().x);
-		vec2 dimY = vec2(basis_.offset_.get().y, basis_.offset_.get().y + basis_.b_.get().y);
-		vec2 pos1LatLong = coordTransform::cartesianToLatLong(vec2(positions[edge.first][0], positions[edge.first][1]), dimX, dimY);
-		vec2 pos2LatLong = coordTransform::cartesianToLatLong(vec2(positions[edge.second][0], positions[edge.second][1]), dimX, dimY);
+				std::cout << pos1LatLong << std::endl;
+				std::cout << pos2LatLong << std::endl;
 
-		// Calculate edge length
-		double edgeLengthGreatCircle = coordTransform::distanceHaversine(pos1LatLong, pos2LatLong);
+				// Distance is returned in meters, but show in km instead for clarity
+				double edgeLengthGreatCircle = coordTransform::distanceHaversine(pos1LatLong, pos2LatLong) / 1000;
 
-		minLength = std::min(edgeLengthGreatCircle, minLength);
-		maxLength = std::max(edgeLengthGreatCircle, maxLength);
+				minLength = std::min(edgeLengthGreatCircle, minLength);
+				maxLength = std::max(edgeLengthGreatCircle, maxLength);
 
-		graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthGreatCircle);
+				graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthGreatCircle);
 
-        //// Calculate edge length
-        //double edgeLength = glm::distance(positions[edge.second], positions[edge.first]);
-       
-        //// Set min and max length
-        //minLength = std::min(edgeLength, minLength);
-        //maxLength = std::max(edgeLength, maxLength);
-        //
-        //// Insert edge and set vertex data as vertex position
-        //// and set edge data as edge length
-        //graph_.insert_edge({edge.first, positions[edge.first]}, {edge.second, positions[edge.second]}, edgeLength);
+				break;
+			}
+
+			default:
+				break;
+		}
     }
+
     // Set property for filtering edge length
     filterEdgeLength_.set({minLength, maxLength}, {minLength, maxLength}, increment_, minSep_);
 
@@ -408,7 +412,7 @@ void MeshGraph::process() {
         return;
     
     // Create graph if not created
-    if (!graphCreated_)
+    if (!graphCreated_ || distanceMethod_.isModified())
         createGraph();
 
 	testsCoordinateTransformations();

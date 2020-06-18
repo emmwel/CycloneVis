@@ -60,6 +60,12 @@ namespace inviwo {
  */
 class IVW_MODULE_CYCLONEVIS_API MeshGraph : public Processor {
 public:
+
+	enum class DistanceMethod {
+		Euclidean,
+		GreatCircleHaversine,
+	};
+
     MeshGraph();
     virtual ~MeshGraph() = default;
 
@@ -95,6 +101,9 @@ private:
     FloatMinMaxProperty filterXMax_;
     FloatMinMaxProperty filterYMax_;
     FloatMinMaxProperty filterZMax_;
+
+	// Change distance method used to calculate edge length
+	TemplateOptionProperty<DistanceMethod> distanceMethod_;
     
     FloatMinMaxProperty filterEdgeLength_;
 
