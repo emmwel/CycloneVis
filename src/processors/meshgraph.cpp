@@ -166,6 +166,7 @@ bool MeshGraph::filterPos(const vec3& v) {
 }
 
 bool MeshGraph::filterLength(const double &d) {
+	// Check if edge distance is within allowed ranged
     return std::isgreaterequal(d, filterEdgeLength_->x) && std::islessequal(d, filterEdgeLength_->y);
 }
 
@@ -181,12 +182,10 @@ void MeshGraph::createGraph() {
     
     // Buffers, only works when there is one position buffer and one color buffer
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
-    auto colorBuffer = static_cast<Buffer<vec4>*>(mesh->getBuffer(BufferType::ColorAttrib));
     
-    // Get data from the buffers
+    // Get data from the buffer
     auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
     positions_ = positions;
-    auto colors = colorBuffer->getEditableRAMRepresentation()->getDataContainer();
     
     // Get index buffer
     auto indBuffer = mesh->getIndices(0);
@@ -212,7 +211,7 @@ void MeshGraph::createGraph() {
 				// Calculate edge length
 				double edgeLength = glm::distance(positions[edge.second], positions[edge.first]);
 
-				// Set min and max length
+				// Set min and max length for filtering
 				minLength = std::min(edgeLength, minLength);
 				maxLength = std::max(edgeLength, maxLength);
 
@@ -236,9 +235,12 @@ void MeshGraph::createGraph() {
 				// Distance is returned in meters, but show in km instead for clarity
 				double edgeLengthGreatCircle = coordTransform::distanceHaversine(pos1LatLong, pos2LatLong) / 1000;
 
+				// Set min and max length for filtering
 				minLength = std::min(edgeLengthGreatCircle, minLength);
 				maxLength = std::max(edgeLengthGreatCircle, maxLength);
 
+				// Insert edge and set vertex data as vertex position
+				// and set edge data as edge length
 				graph_.insert_edge({ edge.first, positions[edge.first] }, { edge.second, positions[edge.second] }, edgeLengthGreatCircle);
 
 				break;
@@ -255,17 +257,6 @@ void MeshGraph::createGraph() {
     graphCreated_ = true;
 }
 
-template <typename T>
-std::vector<T> convertBuffer(std::shared_ptr<BufferBase> buffer) {
-    auto bufferRAM = buffer->getRepresentation<BufferRAM>();
-    return bufferRAM->dispatch<std::vector<T>>([](auto buf) {
-        auto data = buf->getDataContainer();
-        std::vector<T> result(data.size());
-        std::transform(data.begin(), data.end(), result.begin(),
-                       [](auto& elem) { return util::glm_convert<T>(elem); });
-        return result;
-    });
-}
 
 // TODO: actual tests instead of strange debugging setup?
 void MeshGraph::testsCoordinateTransformations() {
@@ -483,8 +474,6 @@ void MeshGraph::process() {
     result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuff);
 
     outport_.setData(result);
-    
-    
 }
 
 }  // namespace inviwo

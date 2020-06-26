@@ -75,20 +75,36 @@ void MeshWrapperToSphere::process() {
 	auto indices = indBuffer->getEditableRAMRepresentation()->getDataContainer();
 
 	// Get basis of volume to get the dimension mesh is in, since its' basis is not correct...
-	mat3 basis = mat3(basis_.a_.get(), basis_.b_.get(), basis_.c_.get());
-	vec2 dimX = vec2(-basis[0].x/2, basis[0].x/2);
-	vec2 dimY = vec2(-basis[1].y/2, basis[1].y/2);
-	vec2 dimZ = vec2(-basis[2].z/2, basis[2].z/2);
+	//mat3 basis = mat3(basis_.a_.get(), basis_.b_.get(), basis_.c_.get());
+	//vec2 dimX = vec2(-basis[0].x/2, basis[0].x/2);
+	//vec2 dimY = vec2(-basis[1].y/2, basis[1].y/2);
+	//vec2 dimZ = vec2(-basis[2].z/2, basis[2].z/2);
+
+	mat3 basis = mesh->getBasis();
+	vec3 offset = mesh->getOffset();
+	vec2 dimX = vec2(offset.x, offset.x + basis[0].x );
+	vec2 dimY = vec2(offset.y, offset.y + basis[1].y);
+	vec2 dimZ = vec2(offset.z, offset.z + basis[2].z);
+
+	//mat3 haha =  mesh->getBasis();
+	//std::cout << haha << std::endl;
+
+	//vec3 woo = mesh->getOffset();
+	//std::cout << woo << std::endl;
+	//auto mja = mesh->findBuffer(BufferType::PositionAttrib);
+	//auto minmax = util::bufferMinMax(mja.first);
 
 	std::vector<vec3> newPositions(positions.size());
 
 	for (unsigned long i = 0; i < positions.size(); i++) {
 		vec3 latLongAlt = coordTransform::mapToLatLongAlt(positions[i], dimX, dimY, dimZ, sphereRadius_.get());
-		vec3 cartesian = coordTransform::sphericalToCartesian(coordTransform::latLongAltToSpherical(latLongAlt));
+		vec3 spherical = coordTransform::latLongAltToSpherical(latLongAlt);
+		vec3 cartesian = coordTransform::sphericalToCartesian(spherical);
 		newPositions[i] = cartesian;
 
 		std::cout << positions[i] << std::endl;
 		std::cout << latLongAlt << std::endl;
+		std::cout << spherical << std::endl;
 	}
 
 	auto outputPosBuffer = util::makeBuffer(std::move(newPositions));
@@ -98,11 +114,13 @@ void MeshWrapperToSphere::process() {
 	// Create mesh from buffers
 	DrawType hm = mesh->getDefaultMeshInfo().dt;
 
+	// Get the drawtype of the mesh from the first index buffer
+	DrawType dt = mesh->getIndexBuffers()[0].first.dt;
 
-	inviwo::Mesh* result = new Mesh(DrawType::Lines, ConnectivityType::None);
+	inviwo::Mesh* result = new Mesh(dt, ConnectivityType::None);
 	result->addBuffer(BufferType::PositionAttrib, outputPosBuffer);
 	//result->addBuffer(BufferType::TexcoordAttrib, outputTexBuffer);
-	result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), outputIndexBuffer);
+	result->addIndicies(Mesh::MeshInfo(dt, ConnectivityType::None), outputIndexBuffer);
 
 	outport_.setData(result);
 }

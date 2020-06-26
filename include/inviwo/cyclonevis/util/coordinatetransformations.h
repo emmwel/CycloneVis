@@ -131,14 +131,19 @@ namespace coordTransform {
 
 		float latitude = rangeMapper(coords.y, dimY, vec2(-90, 90));
 		float longitude = rangeMapper(coords.x, dimX, vec2(-180, 180));
-		float altitude = sphereRad + 2 * rangeMapper(coords.z, dimZ, vec2(0, dimZ[1]-dimZ[0]));
+		float altitude = sphereRad + rangeMapper(coords.z, dimZ, vec2(0, dimZ[1]-dimZ[0]));
 
 		return vec3(latitude, longitude, altitude);
 	}
 
 	inline vec3 latLongAltToSpherical(vec3 coords) {
 		float rho = coords[2];
-		float theta = TO_RAD * (180 - coords[1]);
+
+		// go from [-180, 180] --> [0, 360]
+		float theta = TO_RAD * (180 + coords[1]);
+
+		// go from [-90, 90] --> [180, 0] (lat long uses elevation angle with the x-axis)
+		// but spherical coordinates uses inclination with y
 		float phi = TO_RAD * (90 - coords[0]);
 
 		return vec3(rho, theta, phi);
