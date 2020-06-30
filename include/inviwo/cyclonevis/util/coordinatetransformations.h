@@ -136,7 +136,7 @@ namespace coordTransform {
 		return vec3(latitude, longitude, altitude);
 	}
 
-	inline vec3 latLongAltToSpherical(vec3 coords) {
+	inline vec3 latLongAltToSpherical(vec3 coords) { // takes as [lat, long, alt]
 		float rho = coords[2];
 
 		// go from [-180, 180] --> [0, 360]

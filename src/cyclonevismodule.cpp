@@ -34,6 +34,8 @@
 #include <inviwo/cyclonevis/processors/meshtexturebuffermapper.h>
 #include <inviwo/cyclonevis/processors/meshwrappertosphere.h>
 #include <inviwo/cyclonevis/processors/texturedmeshrenderer.h>
+#include <inviwo/cyclonevis/processors/vectorfieldonspheretransformation.h>
+#include <inviwo/cyclonevis/processors/volumeflip.h>
 #include <inviwo/cyclonevis/processors/volumeslicequad.h>
 
 #include <modules/opengl/shader/shadermanager.h>
@@ -57,6 +59,8 @@ cyclonevisModule::cyclonevisModule(InviwoApplication* app) : InviwoModule(app, "
 	registerProcessor<CycloneContourLines>();
 	registerProcessor<MeshGraph>();
     registerProcessor<MeshWrapperToSphere>();
+    registerProcessor<VectorFieldOnSphereTransformation>();
+    registerProcessor<VolumeFlip>();
     // registerProcessor<cyclonevisProcessor>();
 
     // Properties

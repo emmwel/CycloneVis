@@ -15,6 +15,8 @@ set(HEADER_FILES
     include/inviwo/cyclonevis/processors/meshtexturebuffermapper.h
     include/inviwo/cyclonevis/processors/meshwrappertosphere.h
     include/inviwo/cyclonevis/processors/texturedmeshrenderer.h
+    include/inviwo/cyclonevis/processors/vectorfieldonspheretransformation.h
+    include/inviwo/cyclonevis/processors/volumeflip.h
     include/inviwo/cyclonevis/processors/volumeslicequad.h
     include/inviwo/cyclonevis/util/batchvolumesampler.h
     include/inviwo/cyclonevis/util/coordinatetransformations.h
@@ -31,6 +33,8 @@ set(SOURCE_FILES
     src/processors/meshtexturebuffermapper.cpp
     src/processors/meshwrappertosphere.cpp
     src/processors/texturedmeshrenderer.cpp
+    src/processors/vectorfieldonspheretransformation.cpp
+    src/processors/volumeflip.cpp
     src/processors/volumeslicequad.cpp
     src/util/batchvolumesampler.cp
 )
