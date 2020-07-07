@@ -74,55 +74,36 @@ void VectorFieldOnSphereTransformation::process() {
 	vec2 dimY = vec2(offset.y, offset.y + std::abs(basis[1].y));
 	vec2 dimZ = vec2(offset.z, offset.z + std::abs(basis[2].z));
 
+	// Used to define data range
+	
 
 	// For each voxel in the volume:
 	for (int i = 0; i < dims.x; i++) {
 		for (int j = 0; j < dims.y; j++) {
 			for (int k = 0; k < dims.z; k++) {
-				ivec3 currentVoxel = ivec3(i, k, j);
+				ivec3 currentVoxel = ivec3(i, j, k);
 
 				// Get vector field in current voxel
 				// The vector field has [u, v] coords which are [eastward, northward] aka [long, lat] aka [theta, -phi] direction
 				vec2 vectorFieldVals = inVolumeDataAccesser->getAsDVec2(currentVoxel);
+
 				// Calculate the latitude and longitude of the voxel position
 				vec2 latLongCoords = coordTransform::cartesianToLatLong(vec2(currentVoxel.x, currentVoxel.y), dimX, dimY);
 
-				std::cout << vectorFieldVals << std::endl;
-				std::cout << latLongCoords << std::endl;
+				// Scale x-component with the latitude
+				vec2 vectorFieldMapped = vec2(std::cos(coordTransform::TO_RAD * latLongCoords.x) * vectorFieldVals.x, vectorFieldVals.y);
 
-				// Transform lat-long to spherical coordinates
-				// Setting altitude as 1 as we have a 2D vector field, so this part is irrelevant either way
-				vec3 spherical = coordTransform::latLongAltToSpherical(vec3(latLongCoords, 1.0));
-				
-				// Calculate the vectors spanning the local spherical frame
-					// The local vector field has opposite direction compared to spherical, as for spherical southward direction would be positive...
-					// But eastward is also positive in spherical.
-				mat3 unitVectorsCart = {
-					{1, 0, 0}, 
-					{0, 1, 0}, 
-					{0, 0, 1} 
-				};
+				outVolumeDataAccesser->setFromDVec2(currentVoxel, vectorFieldMapped);
 
-				double theta = spherical[1];
-				double phi = spherical[2];
-
-				mat3 unitVectorsSpherical = {
-					{sin(phi) * cos(theta), sin(phi) * sin(theta), cos(phi)}, // e_r
-					{cos(phi) * cos(theta), cos(phi) * sin(theta), -sin(phi)}, // e_phi
-					{-sin(theta), cos(theta), 0} // e_theta
-				};
-
-				// Calculate the transpose of the matrix representing the fransformation from world Euclidean frame to local spherical frame
-				mat3 unitVectorsSphericalT = glm::transpose(unitVectorsSpherical);
-
-				 // v = (v_r, v_phi, v_theta)... switch direction on phi to make southwards positive instead of northwards
-				vec3 vectorFieldValsExtended = vec3(0, -vectorFieldVals[1], vectorFieldVals[0]);
-
-				// Transform vector field at point to be in euclidean world frame instead of local frame
-				//vec3 vectorFieldCart = 
 			}
 		}
 	}
+	// Set data range and value range
+	auto minMax = util::volumeMinMax(outVolumeDataAccesser);
+	dvec2 channel1(minMax.first.x, minMax.second.x);
+	dvec2 channel2(minMax.first.y, minMax.second.y);
+	outVolume->dataMap_.dataRange = dvec2(std::min(channel1.x, channel2.x), std::max(channel1.y, channel2.y));
+	outVolume->dataMap_.valueRange = inVolume->dataMap_.valueRange;
 
 	outport_.setData(outVolume);
 }

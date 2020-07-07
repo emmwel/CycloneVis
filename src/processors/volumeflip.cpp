@@ -94,7 +94,7 @@ void VolumeFlip::process() {
 			util::forEachVoxel(*vrprecision, [&](const size3_t& inVoxel) {
 				size3_t outVoxel = inVoxel;
 
-				// Check along which axis values are switched, then switch voxel index for that axis
+				// Check along which axis values should be flipped, then flip voxel index for that axis
 				switch (axislist_) {
 					case ValuesToFlip::XVals: {
 						outVoxel = size3_t(dims.x - 1 - inVoxel.x, inVoxel.y, inVoxel.z);
@@ -118,6 +118,12 @@ void VolumeFlip::process() {
 
 			return newVolume;
 	});
+
+	// Set meta? data
+	outVolume->setBasis(inVolume->getBasis());
+	outVolume->setOffset(inVolume->getOffset());
+	outVolume->dataMap_.dataRange = inVolume->dataMap_.dataRange;
+	outVolume->dataMap_.valueRange = inVolume->dataMap_.valueRange;
 
 	outport_.setData(outVolume);
 }
