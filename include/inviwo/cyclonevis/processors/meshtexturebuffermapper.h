@@ -71,7 +71,7 @@ private:
     Volume* inVolume_;
     ivec3 dims_;
     
-    FloatVec2Property inVolumeValueRange_;
+    FloatVec2Property inVolumeDataRange_;
 	FloatVec2Property surfaceValueRange_;
 };
 

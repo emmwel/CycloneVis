@@ -46,7 +46,7 @@ MeshTextureBufferMapper::MeshTextureBufferMapper()
     , meshInport_("meshInport")
     , volInport_("volumeInport")
     , meshOutport_("meshOutport")
-    , inVolumeValueRange_("inVolumeValueRange_", "Input Volume Value Range", vec2{0.0f}, vec2{std::numeric_limits<float>::lowest()}, vec2{std::numeric_limits<float>::max()}, vec2{0.01}, InvalidationLevel::Valid, PropertySemantics::Text)
+    , inVolumeDataRange_("inVolumeDataRange_", "Input Volume Data Range", vec2{0.0f}, vec2{std::numeric_limits<float>::lowest()}, vec2{std::numeric_limits<float>::max()}, vec2{0.01}, InvalidationLevel::Valid, PropertySemantics::Text)
 	, surfaceValueRange_("surfaceValueRange_", "Surface Value Range", vec2{ 0.0f }, vec2{ std::numeric_limits<float>::lowest() }, vec2{ std::numeric_limits<float>::max() }, vec2{ 0.01 }, InvalidationLevel::Valid, PropertySemantics::Text)
 {
 
@@ -54,14 +54,14 @@ MeshTextureBufferMapper::MeshTextureBufferMapper()
     addPort(volInport_);
     addPort(meshOutport_);
     
-    addProperties(inVolumeValueRange_, surfaceValueRange_);
+    addProperties(inVolumeDataRange_, surfaceValueRange_);
     
     // Do not allow value range to be changed in properties menu
-	inVolumeValueRange_.setReadOnly(true);
+	inVolumeDataRange_.setReadOnly(true);
 	surfaceValueRange_.setReadOnly(true);
     
     volInport_.onChange([this](){
-		inVolumeValueRange_.set(volInport_.getData()->dataMap_.valueRange);
+		inVolumeDataRange_.set(volInport_.getData()->dataMap_.dataRange);
     });
 }
 
@@ -109,7 +109,7 @@ void MeshTextureBufferMapper::process() {
     auto volumeDataAccesser = inVolume_->getEditableRepresentation<VolumeRAM>();
 
     // Get range of data
-    dvec2 valueRange = inVolumeValueRange_.get();
+    dvec2 dataRange = inVolume_->dataMap_.dataRange;
     double minVal = std::numeric_limits<double>::max();
     double maxVal = std::numeric_limits<double>::lowest();
     
@@ -130,7 +130,7 @@ void MeshTextureBufferMapper::process() {
             maxVal = std::max(maxVal, voxelVal);
 
 			// map value to [0, 1] u-coords range
-			double mappedValue = (voxelVal - valueRange[0]) / (valueRange[1] - valueRange[0]);
+			double mappedValue = (voxelVal - dataRange[0]) / (dataRange[1] - dataRange[0]);
 
 			texCoords[i] = util::glm_convert<vec3>(vec3(mappedValue, texCoords[i].y, texCoords[i].z));
 			changeTexCoordsAcceser->setFromDVec3(i, texCoords[i]);
