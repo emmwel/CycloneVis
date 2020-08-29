@@ -484,7 +484,7 @@ void FloodFillVolume::process() {
     
     // Set all output voxel values to max possible number
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
-	double maxValInputVolume = inVolume_->dataMap_.valueRange[1];
+	double maxValInputVolume = inVolume_->dataMap_.dataRange[1];
     
     // Loop through all voxels and set to max value
     for (int i = 0; i < dims_.x; i++) {
