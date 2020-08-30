@@ -166,14 +166,8 @@ size3_t FloodFillVolume::getVoxelIndexFromPosition(const dvec3& position) {
     return indexPos;
 }
 
-bool FloodFillVolume::withinDimensions(ivec3 index) {
-	// TODO: change so region can starts on other side of bound for the x-dimension.
-	// DONE, might need to some tests
-
-	// Apply mod on x-dimension so region grows from one edge to the other
-	ivec3 newIndex = ivec3(index[0] % dims_[0], index[1], index[2]);
-
-    return glm::all(glm::greaterThanEqual(newIndex, ivec3(0))) && glm::all(glm::lessThan(newIndex, dims_));
+bool FloodFillVolume::withinDimensions(const ivec3& index) const {
+    return glm::all(glm::greaterThanEqual(index, ivec3(0))) && glm::all(glm::lessThan(index, dims_));
 }
 
 std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 seedVoxel) {
@@ -240,6 +234,9 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel) {
 
         for (unsigned long i = 0; i < offsets_.size(); i++) {
             ivec3 neighborIndex{curIndex + offsets_[i]};
+
+			// Grow across x-boundary since they are the same points on the world
+			neighborIndex.x = neighborIndex.x % dims_.x;
             
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
@@ -302,6 +299,9 @@ void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
 
         for (unsigned long i = 0; i < offsets_.size(); i++) {
             ivec3 neighborIndex{curIndex + offsets_[i]};
+
+			// Grow across x-boundary since they are the same points on the world
+			neighborIndex.x = neighborIndex.x % dims_.x;
             
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
@@ -363,6 +363,9 @@ void FloodFillVolume::regionGrowingBoundaryBased(ivec3 seedVoxel) {
 
         for (unsigned long i = 0; i < offsets_.size(); i++) {
             ivec3 neighborIndex{curIndex + offsets_[i]};
+
+			// Grow across x-boundary since they are the same points on the world
+			neighborIndex.x = neighborIndex.x % dims_.x;
             
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {
@@ -428,6 +431,9 @@ void FloodFillVolume::regionGrowingCombined(ivec3 seedVoxel) {
 
         for (unsigned long i = 0; i < offsets_.size(); i++) {
             ivec3 neighborIndex{curIndex + offsets_[i]};
+
+			// Grow across x-boundary since they are the same points on the world
+			neighborIndex.x = neighborIndex.x % dims_.x;
             
             // Check that neighbor voxel is within dimensions
             if (withinDimensions(neighborIndex)) {

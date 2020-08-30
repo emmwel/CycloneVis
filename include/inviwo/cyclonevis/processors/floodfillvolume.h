@@ -67,7 +67,7 @@ public:
     
     size3_t getVoxelIndexFromPosition(const dvec3& position);
     
-    bool withinDimensions(ivec3 i);
+    bool withinDimensions(const ivec3& index) const;
     
     std::pair<double, double> standardDeviationAroundSeed(ivec3 seedVoxel);
     
