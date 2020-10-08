@@ -66,6 +66,11 @@ private:
     VolumeInport volumeInport_;
     MeshOutport meshOutport_;
 
+    BoolProperty mapBasedOnVolume_;
+
+    FloatVec2Property inVolumeDataRange_;
+    FloatVec2Property metaBufferDataRange_;
+
     Volume* inVolume_;
     ivec3 dims_;
 

@@ -115,6 +115,7 @@ private:
     // Graph data members
     NGraph::tGraph<int, vec3, double> graph_;
     std::vector<vec3> positions_;
+    std::vector<vec4> textureColors_;
     void createGraph();
     bool graphCreated_;
     

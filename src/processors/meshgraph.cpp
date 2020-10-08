@@ -182,10 +182,14 @@ void MeshGraph::createGraph() {
     
     // Buffers, only works when there is one position buffer and one color buffer
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
+    auto texBuffer = static_cast<Buffer<vec4>*>(mesh->getBuffer(BufferType::ColorAttrib));
     
     // Get data from the buffer
     auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
     positions_ = positions;
+
+    auto textureColors = texBuffer->getEditableRAMRepresentation()->getDataContainer();
+    textureColors_ = textureColors;
     
     // Get index buffer
     auto indBuffer = mesh->getIndices(0);
@@ -448,14 +452,18 @@ void MeshGraph::process() {
     // Get indices from the filtered graph
     std::vector<int> graphIndices = graphFiltered.get_graph_as_vertex_list();
 
-    // Create mapping of indices and vector of positions not filtered away
+    // Create mapping of indices and vector of positions & texture points not filtered away
     std::set<int> uniqueIndices(graphIndices.begin(), graphIndices.end());
     std::map<int, int> rangedIndices;
     std::vector<vec3> filterPositions;
+    std::vector<vec4> filterColors;
+
+
     int counter = 0;
     for (std::set<int>::iterator i = uniqueIndices.begin(); i != uniqueIndices.end(); i++) {
         rangedIndices[*i] = counter;
         filterPositions.push_back(positions_[*i]);
+        filterColors.push_back(textureColors_[*i]);
         ++counter;
     }
     
@@ -467,10 +475,12 @@ void MeshGraph::process() {
     
     auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
     auto posBuff = util::makeBuffer(std::move(filterPositions));
+    auto texBuff = util::makeBuffer(std::move(filterColors));
 
     // Create mesh from buffers
     inviwo::Mesh* result = new Mesh(DrawType::Lines, ConnectivityType::None);
     result->addBuffer(BufferType::PositionAttrib, posBuff);
+    result->addBuffer(BufferType::ColorAttrib, texBuff);
     result->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuff);
 
     outport_.setData(result);

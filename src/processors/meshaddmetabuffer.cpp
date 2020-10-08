@@ -45,11 +45,24 @@ MeshAddMetaBuffer::MeshAddMetaBuffer()
     : Processor()
     , meshInport_("meshInport")
     , volumeInport_("volumeInport")
-    , meshOutport_("meshOutport") {
+    , meshOutport_("meshOutport")
+    , mapBasedOnVolume_("mapBasedOnVolume", "Map Based On Volume", true)
+    , inVolumeDataRange_("inVolumeDataRange", "Input Volume Data Range", vec2{ 0.0f }, vec2{ std::numeric_limits<float>::lowest() }, vec2{ std::numeric_limits<float>::max() }, vec2{ 0.01 }, InvalidationLevel::Valid, PropertySemantics::Text)
+    , metaBufferDataRange_("metaBufferDataRange", "Meta Buffer Data Range", vec2{ 0.0f }, vec2{ std::numeric_limits<float>::lowest() }, vec2{ std::numeric_limits<float>::max() }, vec2{ 0.01 }, InvalidationLevel::Valid, PropertySemantics::Text) {
+
 
     addPort(meshInport_);
     addPort(volumeInport_);
     addPort(meshOutport_);
+    addProperties(mapBasedOnVolume_, inVolumeDataRange_, metaBufferDataRange_);
+
+    inVolumeDataRange_.setReadOnly(true);
+    metaBufferDataRange_.setReadOnly(true);
+
+    // Change shown output range when input volume is changed
+    volumeInport_.onChange([this]() {
+        inVolumeDataRange_.set(volumeInport_.getData()->dataMap_.dataRange);
+    });
 }
 
 ivec3 MeshAddMetaBuffer::getVoxelIndexFromPosition(const dvec3& position) {
@@ -99,9 +112,32 @@ void MeshAddMetaBuffer::process() {
     // Get range of data
     dvec2 dataRange = inVolume_->dataMap_.dataRange;
 
+    // Get min and max values
+    double metaMinVal = std::numeric_limits<double>::max();
+    double metaMaxVal = std::numeric_limits<double>::lowest();
+    for (unsigned long i = 0; i < positions.size(); i++) {
+        vec3 p = positions[i];
+        if (isnan(p.x) || isnan(p.y) || isnan(p.z)) {
+            // do nothing
+            continue;
+        }
+        else {
+            // Get voxel and check if value should replace min or max
+            ivec3 voxelIndex = getVoxelIndexFromPosition(p);
+            double voxelVal = volumeDataAccesser->getAsDouble(voxelIndex);
+            metaMinVal = std::min(metaMinVal, voxelVal);
+            metaMaxVal = std::max(metaMaxVal, voxelVal);
+
+        }
+    }
+
+    // Set buffer value range
+    metaBufferDataRange_.set(vec2(metaMinVal, metaMaxVal));
+
+    // Store mapped values
     std::vector<float> metaVals;
 
-    // Get min and max values
+    // Map values based on either volume or meta buffer data range
     for (unsigned long i = 0; i < positions.size(); i++) {
         vec3 p = positions[i];
         if (isnan(p.x) || isnan(p.y) || isnan(p.z)) {
@@ -110,22 +146,24 @@ void MeshAddMetaBuffer::process() {
             continue;
         }
         else {
-            // Get voxel index from mesh position
+            // Get voxel index from mesh position, get voxel value
             ivec3 voxelIndex = getVoxelIndexFromPosition(p);
-
-            // Map the voxel value to the mesh texCoord scalar's u(s?)-value
             double voxelVal = volumeDataAccesser->getAsDouble(voxelIndex);
 
-            // map value to [0, 1] u-coords range
-            double mappedValue = (voxelVal - dataRange[0]) / (dataRange[1] - dataRange[0]);
+            // Map value to [0, 1] range
+            double mappedValue = 0;
+            if (mapBasedOnVolume_.get()) {
+                mappedValue = (voxelVal - dataRange[0]) / (dataRange[1] - dataRange[0]);
+            }
+            else {
+                mappedValue = (voxelVal - metaMinVal) / (metaMaxVal - metaMinVal);
+            }
             metaVals.push_back(mappedValue);
 
         }
     }
 
     mesh->addBuffer(BufferType::ScalarMetaAttrib, util::makeBuffer(std::move(metaVals)));
-
-
     meshOutport_.setData(mesh);
 }
 
