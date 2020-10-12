@@ -67,6 +67,8 @@ private:
     MeshInport meshInport_;
     VolumeInport volInport_;
     MeshOutport meshOutport_;
+
+    BoolProperty mapBasedOnVolume_;
     
     Volume* inVolume_;
     ivec3 dims_;
