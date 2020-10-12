@@ -11,6 +11,7 @@ set(HEADER_FILES
     include/inviwo/cyclonevis/ngraph/set_ops.hpp
     include/inviwo/cyclonevis/processors/cyclonecontourlines.h
     include/inviwo/cyclonevis/processors/floodfillvolume.h
+    include/inviwo/cyclonevis/processors/meshaddmetabuffer.h
     include/inviwo/cyclonevis/processors/meshgraph.h
     include/inviwo/cyclonevis/processors/meshtexturebuffermapper.h
     include/inviwo/cyclonevis/processors/meshwrappertosphere.h
@@ -29,6 +30,7 @@ set(SOURCE_FILES
     src/cyclonevismodule.cpp
     src/processors/cyclonecontourlines.cpp
     src/processors/floodfillvolume.cpp
+    src/processors/meshaddmetabuffer.cpp
     src/processors/meshgraph.cpp
     src/processors/meshtexturebuffermapper.cpp
     src/processors/meshwrappertosphere.cpp

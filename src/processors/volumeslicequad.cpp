@@ -59,30 +59,31 @@ namespace inviwo {
             buffertraits::TexcoordBuffer<3>,
 			buffertraits::ColorsBuffer>;
 		auto mesh = std::make_shared<MyMesh>();
-        
-        // Create vertices according to basis property
-        mat3 basis = mat3{basis_.a_, basis_.b_, basis_.c_};
-        vec3 offset = basis_.offset_.get();
-        
-        // Define z-val and check if z-val should be based on slice or not
+
+		// Get linked basis and offset, set as model matrix
+		mat4 basisandoffset = mat4{
+			vec4(basis_.a_.get(), 0),
+			vec4(basis_.b_.get(), 0),
+			vec4(basis_.c_.get(), 0),
+			vec4(basis_.offset_.get(), 1)
+		};
+
+		mesh->setModelMatrix(basisandoffset);
+
+		// Define z-val and check if z-val should be based on slice or not
         float z_val = 0.f;
         if (mapZToSlice_.get()) {
             z_val = float(sliceNumber_.get() - 1) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
         }
-        
-        vec3 vert0 = basis * vec3(0.0f, 0.0f, z_val) + offset;
-        vec3 vert1 = basis * vec3(0.0f, 1.0f, z_val) + offset;
-        vec3 vert2 = basis * vec3(1.0f, 0.0f, z_val) + offset;
-        vec3 vert3 = basis * vec3(1.0f, 1.0f, z_val) + offset;
-        
-        // Color and normal of quad
-        vec4 color = vec4(1, 1, 1, 1);
-        vec3 normal = vec3(0, 0, 1);
-        
-		mesh->addVertex(vert0, normal, vec3(0.0f), color);
-        mesh->addVertex(vert1, normal, vec3(0.0f, 1.0f, 0.0f), color);
-        mesh->addVertex(vert2, normal, vec3(1.0f, 0.0f, 0.0f), color);
-        mesh->addVertex(vert3, normal, vec3(1.0f, 1.0f, 0.0f), color);
+
+		// Color and normal of quad
+		vec4 color = vec4(1, 1, 1, 1);
+		vec3 normal = vec3(0, 0, 1);
+
+		mesh->addVertex(vec3(0.0f, 0.0f, z_val), normal, vec3(0.0f), color);
+        mesh->addVertex(vec3(0.0f, 1.0f, z_val), normal, vec3(0.0f, 1.0f, 0.0f), color);
+        mesh->addVertex(vec3(1.0f, 0.0f, z_val), normal, vec3(1.0f, 0.0f, 0.0f), color);
+        mesh->addVertex(vec3(1.0f, 1.0f, z_val), normal, vec3(1.0f, 1.0f, 0.0f), color);
 
 		auto indexbuffer = mesh->addIndexBuffer(DrawType::Triangles, ConnectivityType::Strip);
 		indexbuffer->add(0);

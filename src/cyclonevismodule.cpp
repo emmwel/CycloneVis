@@ -30,6 +30,7 @@
 #include <inviwo/cyclonevis/cyclonevismodule.h>
 #include <inviwo/cyclonevis/processors/cyclonecontourlines.h>
 #include <inviwo/cyclonevis/processors/floodfillvolume.h>
+#include <inviwo/cyclonevis/processors/meshaddmetabuffer.h>
 #include <inviwo/cyclonevis/processors/meshgraph.h>
 #include <inviwo/cyclonevis/processors/meshtexturebuffermapper.h>
 #include <inviwo/cyclonevis/processors/meshwrappertosphere.h>
@@ -57,6 +58,7 @@ cyclonevisModule::cyclonevisModule(InviwoApplication* app) : InviwoModule(app, "
 	registerProcessor<FloodFillVolume>();
 	registerProcessor<MeshTextureBufferMapper>();
 	registerProcessor<CycloneContourLines>();
+    registerProcessor<MeshAddMetaBuffer>();
 	registerProcessor<MeshGraph>();
     registerProcessor<MeshWrapperToSphere>();
     registerProcessor<VectorFieldOnSphereTransformation>();

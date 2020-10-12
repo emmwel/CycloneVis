@@ -52,15 +52,11 @@ VectorFieldOnSphereTransformation::VectorFieldOnSphereTransformation()
 }
 
 void VectorFieldOnSphereTransformation::process() {
-    // outport_.setData(myImage);
-
 	// Load input volume
 	Volume* inVolume = inport_.getData()->clone();
 	ivec3 dims = ivec3(inVolume->getDimensions());
 
 	// Create output volume and set size to inport volume
-	//DataVec3Float64
-	//std::shared_ptr<Volume> outVolume = std::make_shared<Volume>(Volume(dims, inVolume->getDataFormat()));
 	std::shared_ptr<Volume> outVolume = std::make_shared<Volume>(Volume(dims, DataVec3Float32::get()));
 	outVolume->setBasis(inVolume->getBasis());
 	outVolume->setOffset(inVolume->getOffset());
@@ -74,38 +70,30 @@ void VectorFieldOnSphereTransformation::process() {
 	vec3 offset = inVolume->getOffset();
 	vec2 dimX = vec2(0, dims.x);
 	vec2 dimY = vec2(0, dims.y);
-	//vec2 dimZ = vec2(offset.z, offset.z + std::abs(basis[2].z));
-
-	// Used to define data range
-	
 
 	// For each voxel in the volume:
 	for (int i = 0; i < dims.x; i++) {
 		for (int j = 0; j < dims.y; j++) {
 			for (int k = 0; k < dims.z; k++) {
+
 				ivec3 currentVoxel = ivec3(i, j, k);
 
 				// Get vector field in current voxel
 				// The vector field has [u, v] coords which are [eastward, northward] aka [long, lat] aka [theta, -phi] direction
 				vec2 vectorFieldVals = inVolumeDataAccesser->getAsDVec2(currentVoxel);
 
-
 				// Calculate the latitude and longitude of the voxel position
 				vec2 latLong = coordTransform::cartesianToLatLong(vec2(currentVoxel.x, currentVoxel.y), dimX, dimY);
+				double a = 6378137.0; // major axis in meters
+				double b = 6356752.3; // minor axis in meters
+				double efficiency2 = (a * a - b * b) / (a * a); // efficiency order 2
 
 				// Degree length in metres
-				float latLength = 111132.92 - 559.82 * std::cos(coordTransform::TO_RAD * 2 * latLong.x) + 1.175 * std::cos(coordTransform::TO_RAD * 4 * latLong.x) - 0.0023 * std::cos(coordTransform::TO_RAD * 6 * latLong.x);
-				float longLength = 111412.84 * std::cos(coordTransform::TO_RAD * latLong.x) - 93.5 * std::cos(coordTransform::TO_RAD * 3 * latLong.x) + 0.118 * std::cos(coordTransform::TO_RAD * 5 * latLong.x);
+				float latLength =  M_PI * a * (1.0 - efficiency2) / 180.0 * std::pow(1.0 - efficiency2 * std::sin(coordTransform::TO_RAD * latLong.x) * std::sin(coordTransform::TO_RAD * latLong.x), 1.5);
+				float longLength = M_PI * a * std::cos(coordTransform::TO_RAD * latLong.x) / 180 * sqrt(1 - efficiency2 * std::sin(coordTransform::TO_RAD * latLong.x) * std::sin(coordTransform::TO_RAD * latLong.x));
 
 				// Scale x-component with the latitude, and divide with the length of a difference in degree
-				vec3 vectorFieldMapped = vec3(std::cos(coordTransform::TO_RAD * latLong.x) * vectorFieldVals.x / longLength, vectorFieldVals.y / latLength, 0);
-
-				
-				std::cout << latLong << std::endl;
-				std::cout << latLength << std::endl;
-				std::cout << longLength << std::endl;
-				std::cout << vectorFieldMapped << std::endl;
-				std::cout << vectorFieldVals << std::endl;
+				vec3 vectorFieldMapped = vec3(std::cos(coordTransform::TO_RAD * latLong.x) * vectorFieldVals.x / std::abs(longLength), vectorFieldVals.y / std::abs(latLength), 0);
 
 				outVolumeDataAccesser->setFromDVec3(currentVoxel, vectorFieldMapped);
 

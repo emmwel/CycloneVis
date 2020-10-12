@@ -69,7 +69,7 @@ public:
     
     bool withinDimensions(const ivec3& index) const;
     
-    std::pair<double, double> standardDeviationAroundSeed(ivec3 seedVoxel);
+    std::pair<double, double> standardDeviationAroundSeed(const ivec3& seedVoxel);
     
     void floodFill(ivec3 seedVoxel);
     void regionGrowingValuesBased(ivec3 seedVoxel);

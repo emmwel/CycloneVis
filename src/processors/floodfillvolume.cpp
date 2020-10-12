@@ -170,7 +170,7 @@ bool FloodFillVolume::withinDimensions(const ivec3& index) const {
     return glm::all(glm::greaterThanEqual(index, ivec3(0))) && glm::all(glm::lessThan(index, dims_));
 }
 
-std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(ivec3 seedVoxel) {
+std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(const ivec3& seedVoxel) {
     // Get all neighbor values
     std::vector<double> neighborsValues;
     std::vector<double> neighborsGradientMagnitude;
