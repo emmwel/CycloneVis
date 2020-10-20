@@ -54,11 +54,7 @@ namespace inviwo {
 	}
 
 	void VolumeSliceQuad::process() {
-		using MyMesh = TypedMesh<buffertraits::PositionsBuffer,
-            buffertraits::NormalBuffer,
-            buffertraits::TexcoordBuffer<3>,
-			buffertraits::ColorsBuffer>;
-		auto mesh = std::make_shared<MyMesh>();
+		inviwo::Mesh* mesh = new Mesh;
 
 		// Get linked basis and offset, set as model matrix
 		mat4 basisandoffset = mat4{
@@ -76,20 +72,79 @@ namespace inviwo {
             z_val = float(sliceNumber_.get() - 1) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
         }
 
-		// Color and normal of quad
-		vec4 color = vec4(1, 1, 1, 1);
-		vec3 normal = vec3(0, 0, 1);
+		// Create positions
+		vec3 lowerLeft = vec3(0.0f, 0.0f, z_val);
+		vec3 lowerRight = vec3(0.0f, 1.0f, z_val);
+		vec3 upperLeft = vec3(1.0f, 0.0f, z_val);
+		vec3 upperRight = vec3(1.0f, 1.0f, z_val);
+		std::vector<vec3> positions = { lowerLeft, lowerRight, upperLeft, upperRight};
 
-		mesh->addVertex(vec3(0.0f, 0.0f, z_val), normal, vec3(0.0f), color);
-        mesh->addVertex(vec3(0.0f, 1.0f, z_val), normal, vec3(0.0f, 1.0f, 0.0f), color);
-        mesh->addVertex(vec3(1.0f, 0.0f, z_val), normal, vec3(1.0f, 0.0f, 0.0f), color);
-        mesh->addVertex(vec3(1.0f, 1.0f, z_val), normal, vec3(1.0f, 1.0f, 0.0f), color);
+		// Create texture coordinates
+		vec3 lowerLeftTexCoord = vec3(0.0f, 0.0f, 0.0f);
+		vec3 lowerRightTexCoord = vec3(0.0f, 1.0f, 0.0f);
+		vec3 UpperLeftTexCoord = vec3(1.0f, 0.0f, 0.0f);
+		vec3 UpperRightTexCoord = vec3(1.0f, 1.0f, 0.0f);
+		std::vector<vec3> textureCoords = { lowerLeftTexCoord, lowerRightTexCoord, UpperLeftTexCoord, UpperRightTexCoord };
 
-		auto indexbuffer = mesh->addIndexBuffer(DrawType::Triangles, ConnectivityType::Strip);
-		indexbuffer->add(0);
-		indexbuffer->add(1);
-		indexbuffer->add(2);
-		indexbuffer->add(3);
+		// Normals, colors and indices for triangle index buffer
+		std::vector<vec3> normals;
+		std::vector<vec4> colors;
+		std::vector<std::uint32_t> indexMeshData;
+		for (int i = 0; i < 4; i++) {
+			normals.push_back(vec3(0, 0, 1));
+			colors.push_back(vec4(1, 1, 1, 1));
+			indexMeshData.push_back(i);
+		}
+
+		// Indices for line index buffer
+		//std::vector<std::uint32_t> indexMeshData2 = { 0, 1, 0, 2, 1, 3, 2, 3 };
+		std::vector<std::uint32_t> indexMeshData2;
+		int ROWS = 1;
+		int COLS = 1;
+		for (int row = 0; row < ROWS; row++) {
+			for (int col = 0; col < COLS; col++) {
+
+				int curRowIndex = row * (ROWS + 1);
+				int upRowIndex = (row + 1) * (ROWS + 1);
+
+				//2------3
+				//|      |
+				//|      |
+				//0------1
+
+				// (0 - 1)
+				indexMeshData2.push_back(curRowIndex + col);
+				indexMeshData2.push_back(curRowIndex + col + 1);
+
+				// (1 - 3)
+				indexMeshData2.push_back(curRowIndex + col + 1);
+				indexMeshData2.push_back(upRowIndex + col + 1);
+
+				// (0 - 2)
+				indexMeshData2.push_back(curRowIndex + col);
+				indexMeshData2.push_back(upRowIndex + col);
+
+				// (2 - 3)
+				indexMeshData2.push_back(upRowIndex + col);
+				indexMeshData2.push_back(upRowIndex + col + 1);
+				
+			}
+		}
+
+		// Make buffers
+		auto posBuff = util::makeBuffer(std::move(positions));
+		auto normalBuff = util::makeBuffer(std::move(normals));
+		auto texBuff = util::makeBuffer(std::move(textureCoords));
+		auto colBuff = util::makeBuffer(std::move(colors));
+		auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
+		auto indexBuffLines = util::makeIndexBuffer(std::move(indexMeshData2));
+
+		mesh->addBuffer(BufferType::PositionAttrib, posBuff);
+		mesh->addBuffer(BufferType::NormalAttrib, normalBuff);
+		mesh->addBuffer(BufferType::TexcoordAttrib, texBuff);
+		mesh->addBuffer(BufferType::ColorAttrib, colBuff);
+		mesh->addIndicies(Mesh::MeshInfo(DrawType::Triangles, ConnectivityType::Strip), indexBuff);
+		mesh->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuffLines);
         
 		outport_.setData(mesh);
 	}
