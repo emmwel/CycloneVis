@@ -28,6 +28,8 @@
  *********************************************************************************/
 
 #include <inviwo/cyclonevis/processors/floodfillvolume.h>
+#include <inviwo/core/util/indexmapper.h>
+
 
 namespace inviwo {
 
@@ -208,67 +210,94 @@ std::pair<double, double> FloodFillVolume::standardDeviationAroundSeed(const ive
 }
 
 void FloodFillVolume::floodFill(ivec3 seedVoxel) {
-    // Get acces to data
-    auto inVolumeDataAccesser = inVolume_->getRepresentation<VolumeRAM>();
     auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
-    
-    // Create queue
-    std::list<ivec3> queue;
-    queue.push_back(seedVoxel);
-    
-    // Get isoValue
-    double isoValue = inVolumeDataAccesser->getAsDouble(seedVoxel);
-    outVolumeDataAccesser->setFromDouble(seedVoxel, 0.0);
-    
+
     // Get user-input boundary
     double boundary = boundary_.get();
-    
-    // Prep to set value range of output volume
+    // 
+     // Prep to set value range of output volume
     dvec2 valR = valueRange_.get();
     double maxVal = std::max(valR[1], std::numeric_limits<double>::lowest());
     double minVal = std::min(valR[0], std::numeric_limits<double>::max());
-    
-    while(!queue.empty()) {
-        ivec3 curIndex = queue.front();
-        queue.pop_front();
 
-        for (unsigned long i = 0; i < offsets_.size(); i++) {
-            ivec3 neighborIndex{curIndex + offsets_[i]};
+    // Generate the output volume using dispatch for generalized data types
+    inVolume_->getRepresentation<VolumeRAM>()->dispatch<  void, dispatching::filter::Scalars>(
+        [this, &outVolumeDataAccesser, seedVoxel, boundary, &minVal, &maxVal]
+        (auto inputVolumeRAM) {
+            // ValueType is the concrete type of the volume, e.g. int, float
+            using ValueType = util::PrecisionValueType<decltype(inputVolumeRAM)>;
+            const size3_t dims = inputVolumeRAM->getDimensions();
 
-			// Grow across x-boundary since they are the same points on the world
-			neighborIndex.x = neighborIndex.x % dims_.x;
-            
-            // Check that neighbor voxel is within dimensions
-            if (withinDimensions(neighborIndex)) {
-                double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
-                double compValue = std::abs(neighborVal - isoValue);
+            // Indexmapper mapping 3D index to 1D
+            inviwo::util::IndexMapper3D map3DIndexto1D(dims);
 
-                // Check value is within boundary
-                if ( compValue < boundary) {
+            // Get input data
+            const ValueType* inputVolumeData = inputVolumeRAM->getDataTyped();
 
-                    // Only add to queue and change value if voxel has not been accessed before
-                    if (outVolumeDataAccesser->getAsDouble(neighborIndex) > boundary) {
-                        // Check if the valueRange has been changed
-                        maxVal = std::max(maxVal, neighborVal);
-                        minVal = std::min(minVal, neighborVal);
-                        
-                        // Set voxel value of output index as diff with iso value
-                        outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
+            // Create a representation of same type as the input volume
+            //auto outputRam = std::make_shared<VolumeRAMPrecision< typename ValueType> >(dims);
+            //static_cast<VolumeRAMPrecision<typename Format::type>*>(volumeram)
+            auto outputRamPrecision = static_cast<VolumeRAMPrecision<typename ValueType>*>(outVolumeDataAccesser);
+            ValueType* outVolumeData = outputRamPrecision->getDataTyped();
 
-                        // Add to queue
-                        queue.push_back(neighborIndex);
+            // Create queue
+            std::list<ivec3> queue;
+            queue.push_back(seedVoxel);
+
+            // Get isoValue
+            size_t isoIndex1D = map3DIndexto1D(seedVoxel);
+            ValueType isoValue = inputVolumeData[isoIndex1D];
+            outVolumeData[isoIndex1D] = 0.0;
+
+            dvec2 valR = valueRange_.get();
+            double maxVal = std::max(valR[1], std::numeric_limits<double>::lowest());
+            double minVal = std::min(valR[0], std::numeric_limits<double>::max());
+
+            while(!queue.empty()) {
+                ivec3 curIndex = queue.front();
+                queue.pop_front();
+
+                for (unsigned long i = 0; i < offsets_.size(); i++) {
+                    ivec3 neighborIndex{curIndex + offsets_[i]};
+
+                    // Grow across x-boundary since they are the same points on the world
+                    neighborIndex.x = neighborIndex.x % dims.x;
+         
+                    // Check that neighbor voxel is within dimensions
+                    if (this->withinDimensions(neighborIndex)) {
+                        //double neighborVal = inVolumeDataAccesser->getAsDouble(neighborIndex);
+                        size_t neighborIndex1D = map3DIndexto1D(neighborIndex);
+                        ValueType neighborVal = inputVolumeData[neighborIndex1D];
+                        ValueType compValue = std::abs(static_cast<double>(neighborVal) - isoValue);
+
+                        // Check value is within boundary
+                        if ( compValue < boundary) {
+
+                            // Only add to queue and change value if voxel has not been accessed before
+                            if (outVolumeData[neighborIndex1D] > boundary) {
+                                // Check if the valueRange has been changed
+                                maxVal = std::max(maxVal, static_cast<double>(neighborVal));
+                                minVal = std::min(minVal, static_cast<double>(neighborVal));
+                     
+                                // Set voxel value of output index as diff with iso value
+                                outVolumeData[neighborIndex1D] = compValue;
+
+                                // Add to queue
+                                queue.push_back(neighborIndex);
+                            }
+                        }
+
+                        else {
+                            // Set values for boundary points
+                            outVolumeData[neighborIndex1D] = compValue;
+                        }
                     }
                 }
-
-				else {
-					outVolumeDataAccesser->setFromDouble(neighborIndex, compValue);
-				}
             }
+
+            valueRange_.set({ minVal, maxVal });
         }
-    }
-    
-    // Set new value range
-    valueRange_.set({minVal, maxVal});
+    );
 }
 
 void FloodFillVolume::regionGrowingValuesBased(ivec3 seedVoxel) {
@@ -479,27 +508,32 @@ void FloodFillVolume::process() {
     if (!meshInport_.isReady() || !volumeInport_.isReady() || !gradientMagnitudeVolInport_.isReady())
         return;
     
-    // Get inport volume size
+    // Get inport volume
     inVolume_ = volumeInport_.getData()->clone();
     dims_ = ivec3(inVolume_->getDimensions());
-    
-    // Create output volume and set size to inport volume
-    outVolume_ = std::make_shared<Volume>(Volume(dims_, inVolume_->getDataFormat()));
+    auto maxValInputVolume = inVolume_->dataMap_.dataRange[1];
+
+    // Generate the output volume using dispatch for generalized data types
+    outVolume_ = inVolume_->getRepresentation<VolumeRAM>()->dispatch<  std::shared_ptr<Volume>, dispatching::filter::Scalars>([maxValInputVolume](auto inputVolumeRAM) {
+        // ValueType is the concrete type of the volume, e.g. int, float
+        using ValueType = util::PrecisionValueType<decltype(inputVolumeRAM)>;
+        const size3_t dims = inputVolumeRAM->getDimensions();
+        const ValueType* inputVolumeData = inputVolumeRAM->getDataTyped(); // Data from inports is const
+
+        // Create a representation of same type as the input volume
+        auto outputRam = std::make_shared<VolumeRAMPrecision< typename ValueType> >(dims);
+        ValueType* outData = outputRam->getDataTyped();
+
+        // Set all voxels to be max value from input volume
+        for (size_t i = 0; i < (dims.x * dims.y * dims.z); ++i) {
+            outData[i] = maxValInputVolume;
+        }
+
+        return std::make_shared<Volume>(outputRam);
+    });
+
     outVolume_->setBasis(inVolume_->getBasis());
     outVolume_->setOffset(inVolume_->getOffset());
-    
-    // Set all output voxel values to max possible number
-    auto outVolumeDataAccesser = outVolume_->getEditableRepresentation<VolumeRAM>();
-	double maxValInputVolume = inVolume_->dataMap_.dataRange[1];
-    
-    // Loop through all voxels and set to max value
-    for (int i = 0; i < dims_.x; i++) {
-        for (int j = 0; j < dims_.y; j++) {
-            for (int k = 0; k < dims_.z; k++) {
-                outVolumeDataAccesser->setFromDouble(size3_t(i, j, k), maxValInputVolume);
-            }
-        }
-    }
 
     // Get inport mesh positions
     std::shared_ptr<Mesh> mesh(meshInport_.getData()->clone());
