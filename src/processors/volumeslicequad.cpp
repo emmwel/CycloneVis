@@ -72,61 +72,55 @@ namespace inviwo {
             z_val = float(sliceNumber_.get() - 1) / (sliceNumber_.getMaxValue() - sliceNumber_.getMinValue());
         }
 
-		// Create positions
-		vec3 lowerLeft = vec3(0.0f, 0.0f, z_val);
-		vec3 lowerRight = vec3(0.0f, 1.0f, z_val);
-		vec3 upperLeft = vec3(1.0f, 0.0f, z_val);
-		vec3 upperRight = vec3(1.0f, 1.0f, z_val);
-		std::vector<vec3> positions = { lowerLeft, lowerRight, upperLeft, upperRight};
+		// Create positions based on a grid of the domain
+		std::vector<vec3> positions;
+		std::vector<vec3> textureCoords;
+		int ROWS = basisandoffset[1][1];
+		int COLS = basisandoffset[0][0];
 
-		// Create texture coordinates
-		vec3 lowerLeftTexCoord = vec3(0.0f, 0.0f, 0.0f);
-		vec3 lowerRightTexCoord = vec3(0.0f, 1.0f, 0.0f);
-		vec3 UpperLeftTexCoord = vec3(1.0f, 0.0f, 0.0f);
-		vec3 UpperRightTexCoord = vec3(1.0f, 1.0f, 0.0f);
-		std::vector<vec3> textureCoords = { lowerLeftTexCoord, lowerRightTexCoord, UpperLeftTexCoord, UpperRightTexCoord };
+		for (int row = 0; row <= ROWS; row++) {
+			for (int col = 0; col <= COLS; col++) {
+				float x = (float)col / (float)COLS;
+				float y = (float)row / (float)ROWS;
+				float u = x;
+				float v = y;
 
-		// Normals, colors and indices for triangle index buffer
-		std::vector<vec3> normals;
-		std::vector<vec4> colors;
-		std::vector<std::uint32_t> indexMeshData;
-		for (int i = 0; i < 4; i++) {
-			normals.push_back(vec3(0, 0, 1));
-			colors.push_back(vec4(1, 1, 1, 1));
-			indexMeshData.push_back(i);
+				positions.push_back(vec3(x, y, z_val));
+				textureCoords.push_back(vec3(u, v, 0));
+			}
 		}
 
-		// Indices for line index buffer
-		//std::vector<std::uint32_t> indexMeshData2 = { 0, 1, 0, 2, 1, 3, 2, 3 };
-		std::vector<std::uint32_t> indexMeshData2;
-		int ROWS = 1;
-		int COLS = 1;
+		// Normals and colors
+		std::vector<vec3> normals;
+		std::vector<vec4> colors;
+		for (int i = 0; i < positions.size(); i++) {
+			normals.push_back(vec3(0, 0, 1));
+			colors.push_back(vec4(1, 1, 1, 1));
+		}
+
+		// Indices for line triangle buffer
+		std::vector<std::uint32_t> indexMeshDataTriangles;
 		for (int row = 0; row < ROWS; row++) {
 			for (int col = 0; col < COLS; col++) {
 
-				int curRowIndex = row * (ROWS + 1);
-				int upRowIndex = (row + 1) * (ROWS + 1);
+				int curRowIndex = row * (COLS + 1);
+				int upRowIndex = (row + 1) * (COLS + 1);
 
+				// TRIANGLES
 				//2------3
-				//|      |
-				//|      |
+				//| \    |
+				//|   \  |
 				//0------1
 
-				// (0 - 1)
-				indexMeshData2.push_back(curRowIndex + col);
-				indexMeshData2.push_back(curRowIndex + col + 1);
+				// 0 - 1 - 2
+				indexMeshDataTriangles.push_back(curRowIndex + col);
+				indexMeshDataTriangles.push_back(curRowIndex + col + 1);
+				indexMeshDataTriangles.push_back(upRowIndex + col);
 
-				// (1 - 3)
-				indexMeshData2.push_back(curRowIndex + col + 1);
-				indexMeshData2.push_back(upRowIndex + col + 1);
-
-				// (0 - 2)
-				indexMeshData2.push_back(curRowIndex + col);
-				indexMeshData2.push_back(upRowIndex + col);
-
-				// (2 - 3)
-				indexMeshData2.push_back(upRowIndex + col);
-				indexMeshData2.push_back(upRowIndex + col + 1);
+				// 1 - 3 - 2
+				indexMeshDataTriangles.push_back(curRowIndex + col + 1);
+				indexMeshDataTriangles.push_back(upRowIndex + col + 1);
+				indexMeshDataTriangles.push_back(upRowIndex + col);
 				
 			}
 		}
@@ -136,15 +130,13 @@ namespace inviwo {
 		auto normalBuff = util::makeBuffer(std::move(normals));
 		auto texBuff = util::makeBuffer(std::move(textureCoords));
 		auto colBuff = util::makeBuffer(std::move(colors));
-		auto indexBuff = util::makeIndexBuffer(std::move(indexMeshData));
-		auto indexBuffLines = util::makeIndexBuffer(std::move(indexMeshData2));
+		auto indexBuffTriangles = util::makeIndexBuffer(std::move(indexMeshDataTriangles));
 
 		mesh->addBuffer(BufferType::PositionAttrib, posBuff);
 		mesh->addBuffer(BufferType::NormalAttrib, normalBuff);
 		mesh->addBuffer(BufferType::TexcoordAttrib, texBuff);
 		mesh->addBuffer(BufferType::ColorAttrib, colBuff);
-		mesh->addIndicies(Mesh::MeshInfo(DrawType::Triangles, ConnectivityType::Strip), indexBuff);
-		mesh->addIndicies(Mesh::MeshInfo(DrawType::Lines, ConnectivityType::None), indexBuffLines);
+		mesh->addIndicies(Mesh::MeshInfo(DrawType::Triangles, ConnectivityType::Strip), indexBuffTriangles);
         
 		outport_.setData(mesh);
 	}

@@ -5,10 +5,12 @@ ivw_module(cyclonevis)
 #--------------------------------------------------------------------
 # Add header files
 set(HEADER_FILES
+    include/inviwo/cyclonevis/algorithm/regiongrowing3d.h
     include/inviwo/cyclonevis/cyclonevismodule.h
     include/inviwo/cyclonevis/cyclonevismoduledefine.h
     include/inviwo/cyclonevis/ngraph/ngraph.hpp
     include/inviwo/cyclonevis/ngraph/set_ops.hpp
+    include/inviwo/cyclonevis/processors/create2dgridmesh.h
     include/inviwo/cyclonevis/processors/cyclonecontourlines.h
     include/inviwo/cyclonevis/processors/floodfillvolume.h
     include/inviwo/cyclonevis/processors/meshaddmetabuffer.h
@@ -27,7 +29,9 @@ ivw_group("Header Files" ${HEADER_FILES})
 #--------------------------------------------------------------------
 # Add source files
 set(SOURCE_FILES
+    src/algorithm/regiongrowing3d.cpp
     src/cyclonevismodule.cpp
+    src/processors/create2dgridmesh.cpp
     src/processors/cyclonecontourlines.cpp
     src/processors/floodfillvolume.cpp
     src/processors/meshaddmetabuffer.cpp

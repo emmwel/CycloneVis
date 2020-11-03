@@ -28,8 +28,6 @@
  *********************************************************************************/
 
 #include <inviwo/cyclonevis/processors/floodfillvolume.h>
-#include <inviwo/core/util/indexmapper.h>
-
 
 namespace inviwo {
 
@@ -248,10 +246,6 @@ void FloodFillVolume::floodFill(ivec3 seedVoxel) {
             size_t isoIndex1D = map3DIndexto1D(seedVoxel);
             ValueType isoValue = inputVolumeData[isoIndex1D];
             outVolumeData[isoIndex1D] = 0.0;
-
-            dvec2 valR = valueRange_.get();
-            double maxVal = std::max(valR[1], std::numeric_limits<double>::lowest());
-            double minVal = std::min(valR[0], std::numeric_limits<double>::max());
 
             while(!queue.empty()) {
                 ivec3 curIndex = queue.front();
@@ -539,6 +533,11 @@ void FloodFillVolume::process() {
     std::shared_ptr<Mesh> mesh(meshInport_.getData()->clone());
     auto posBuffer = static_cast<Buffer<vec3>*>(mesh->getBuffer(BufferType::PositionAttrib));
     auto positions = posBuffer->getEditableRAMRepresentation()->getDataContainer();
+
+    // Get current value range
+    dvec2 valRange = valueRange_.get();
+    double minVal = valRange[0];
+    double maxVal = valRange[1];
     
     switch (method_) {
         case Method::FloodFill:
@@ -548,7 +547,9 @@ void FloodFillVolume::process() {
             // Reset valueRange_
             valueRange_.set({std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()});
             for(auto& pos : positions) {
-                floodFill(getVoxelIndexFromPosition(pos));
+                size3_t seedVoxel = getVoxelIndexFromPosition(pos);
+                regiongrowing3D::floodFill(inVolume_, outVolume_, seedVoxel, boundary_.get(), minVal, maxVal);
+                valueRange_.set({minVal, maxVal});
             }
             break;
             

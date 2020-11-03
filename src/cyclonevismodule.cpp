@@ -28,6 +28,7 @@
  *********************************************************************************/
 
 #include <inviwo/cyclonevis/cyclonevismodule.h>
+#include <inviwo/cyclonevis/processors/create2dgridmesh.h>
 #include <inviwo/cyclonevis/processors/cyclonecontourlines.h>
 #include <inviwo/cyclonevis/processors/floodfillvolume.h>
 #include <inviwo/cyclonevis/processors/meshaddmetabuffer.h>
@@ -53,6 +54,7 @@ cyclonevisModule::cyclonevisModule(InviwoApplication* app) : InviwoModule(app, "
     // Register objects that can be shared with the rest of inviwo here:
 
     // Processors
+    registerProcessor<Create2DGridMesh>();
     registerProcessor<TexturedMeshRenderer>();
     registerProcessor<VolumeSliceQuad>();
 	registerProcessor<FloodFillVolume>();

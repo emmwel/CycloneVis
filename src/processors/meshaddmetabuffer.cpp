@@ -35,7 +35,7 @@ namespace inviwo {
 const ProcessorInfo MeshAddMetaBuffer::processorInfo_{
     "org.inviwo.MeshAddMetaBuffer",      // Class identifier
     "Mesh Add Meta Buffer",                // Display name
-    "Undefined",              // Category
+    "CycloneVis",              // Category
     CodeState::Experimental,  // Code state
     Tags::None,               // Tags
 };

@@ -30,19 +30,16 @@
 #pragma once
 
 #include <inviwo/cyclonevis/cyclonevismoduledefine.h>
-#include <inviwo/core/common/inviwo.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <inviwo/core/ports/meshport.h>
-#include <inviwo/core/ports/volumeport.h>
-#include <inviwo/core/util/indexmapper.h>
-#include<inviwo/cyclonevis/algorithm/regiongrowing3d.h>
-
+#include <modules/base/properties/basisproperty.h>
+#include <inviwo/core/properties/boolproperty.h>
 
 namespace inviwo {
 
-/** \docpage{org.inviwo.FloodFillVolume, Flood Fill Volume}
- * ![](org.inviwo.FloodFillVolume.png?classIdentifier=org.inviwo.FloodFillVolume)
+/** \docpage{org.inviwo.Create2DGridMesh, Create2DGrid Mesh}
+ * ![](org.inviwo.Create2DGridMesh.png?classIdentifier=org.inviwo.Create2DGridMesh)
  * Explanation of how to use the processor.
  *
  * ### Inports
@@ -55,29 +52,10 @@ namespace inviwo {
  *   * __<Prop1>__ <description>.
  *   * __<Prop2>__ <description>
  */
-class IVW_MODULE_CYCLONEVIS_API FloodFillVolume : public Processor {
+class IVW_MODULE_CYCLONEVIS_API Create2DGridMesh : public Processor {
 public:
-    enum class Method {
-        FloodFill,
-        RegionGrowingValuesBased,
-        RegionGrowingBoundaryBased,
-        RegionGrowingCombined,
-    };
-    
-    FloodFillVolume();
-    virtual ~FloodFillVolume() = default;
-    
-    size3_t getVoxelIndexFromPosition(const dvec3& position);
-    
-    bool withinDimensions(const ivec3& index) const;
-    
-    std::pair<double, double> standardDeviationAroundSeed(const ivec3& seedVoxel);
-    
-    void floodFill(ivec3 seedVoxel);
-    void regionGrowingValuesBased(ivec3 seedVoxel);
-    void regionGrowingBoundaryBased(ivec3 seedVoxel);
-    void regionGrowingCombined(ivec3 seedVoxel);
-    
+    Create2DGridMesh();
+    virtual ~Create2DGridMesh() = default;
 
     virtual void process() override;
 
@@ -85,26 +63,12 @@ public:
     static const ProcessorInfo processorInfo_;
 
 private:
-    MeshInport meshInport_;
-    VolumeInport volumeInport_;
-    VolumeInport gradientMagnitudeVolInport_;
-    VolumeOutport volumeOutport_;
-    Volume* inVolume_;
-    std::shared_ptr<Volume> outVolume_;
+    MeshOutport meshOutport_;
 
-    std::array<ivec3, 26> offsets_;
-    ivec3 dims_;
-    
-    // Methods
-    TemplateOptionProperty<Method> method_;
-    FloatProperty boundary_;
-	FloatProperty suggestedIsoVal_;
-	double boundaryHelp_;
-    FloatProperty k_;
-    FloatProperty p_;
-    
-    // Used when mapping texture values in another processor
-    FloatVec2Property valueRange_;
+    IntSizeTProperty sliceNumber_;
+    BoolProperty mapZToSlice_;
+    BasisProperty basis_;
+
 };
 
 }  // namespace inviwo
