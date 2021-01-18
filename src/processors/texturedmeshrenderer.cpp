@@ -102,7 +102,7 @@ TexturedMeshRenderer::TexturedMeshRenderer()
 		InvalidationLevel::InvalidResources)
 	, viewNormalsLayer_("viewNormalsLayer", "Normals (View space)", false,
 		InvalidationLevel::InvalidResources)
-	, shader_("texturedmeshrendering.vert", "texturedmeshrendering.frag", false) {
+	, shader_("texturedmeshrendering.vert", "texturedmeshrendering.frag", Shader::Build::No) {
 
 	addPort(inport_);
 	addPort(textureOneInport_);
